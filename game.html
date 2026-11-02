@@ -27,6 +27,19 @@
 <div class="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-auto"><button onclick="openChat()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-purple-400">💬</button><button onclick="centerMap()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-emerald-400">📍</button></div>
 <footer class="w-full max-w-md mx-auto pointer-events-auto"><div id="tagged-btn-container" class="hidden"><button onclick="openTaggedModal()" class="w-full bg-rose-600 text-white font-black py-4 rounded-2xl uppercase">🏳️ I GOT TAGGED</button></div></footer>
 </main>
+<div id="chat-modal" class="fixed inset-0 z-40 bg-black/80 flex items-center justify-center p-3 hidden">
+  <section class="w-full max-w-md h-[min(680px,90vh)] bg-slate-950 border border-slate-700 rounded-3xl flex flex-col overflow-hidden shadow-2xl">
+    <header class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+      <div><h2 class="font-black text-white">PLAYER CHAT</h2><p id="chat-status" class="text-[10px] text-slate-400">Connecting…</p></div>
+      <button type="button" onclick="closeChat()" aria-label="Close chat" class="w-10 h-10 rounded-xl bg-slate-900 text-slate-300 text-xl">×</button>
+    </header>
+    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3" aria-live="polite"></div>
+    <form id="chat-form" class="p-3 border-t border-slate-800 flex gap-2">
+      <input id="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Write a message…" class="min-w-0 flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white outline-none focus:border-purple-500">
+      <button id="chat-send" type="submit" class="px-4 rounded-xl bg-purple-600 text-white font-bold">Send</button>
+    </form>
+  </section>
+</div>
 <div id="tagged-modal" class="fixed inset-0 z-30 bg-black/85 flex items-center justify-center p-4 hidden"><div class="bg-slate-950 border border-slate-800 w-full max-w-xs rounded-3xl p-6 text-center space-y-5"><h3 class="font-black text-white">CONFIRM TAGGED STATUS</h3><p class="text-xs text-slate-400">Were you caught by the Hunter?</p><div class="grid grid-cols-2 gap-3"><button onclick="confirmTagged(true)" class="bg-rose-600 text-white font-bold py-3 rounded-xl">Yes</button><button onclick="closeTaggedModal()" class="bg-slate-800 text-white font-bold py-3 rounded-xl">No</button></div></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
@@ -156,7 +169,54 @@ function startTimers(settings,startedAt){
     matchInterval=setInterval(update,1000);
 }
 function centerMap(){if(marker)map.setView(marker.getLatLng(),18)}
-function openChat(){alert('Chat feature opening...')}
+let chatListenerStarted=false;
+function openChat(){
+    const modal=document.getElementById('chat-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('chat-input').focus();
+    if(chatListenerStarted)return;
+    chatListenerStarted=true;
+    roomRef.child('chatMessages').orderByChild('sentAt').limitToLast(100).on('value',snapshot=>{
+        const list=document.getElementById('chat-messages');
+        const wasNearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<80;
+        list.replaceChildren();
+        snapshot.forEach(child=>{
+            const message=child.val();
+            if(!message||typeof message.text!=='string')return;
+            const row=document.createElement('div');
+            row.className='max-w-[90%] '+(message.playerId===playerId?'ml-auto':'mr-auto');
+            const name=document.createElement('div');
+            name.className='text-[10px] font-bold mb-1 '+(message.playerId===playerId?'text-purple-300 text-right':'text-emerald-300');
+            name.textContent=message.playerId===playerId?'You':(message.name||'Player');
+            const bubble=document.createElement('div');
+            bubble.className='rounded-2xl px-3 py-2 text-sm break-words '+(message.playerId===playerId?'bg-purple-700 text-white':'bg-slate-800 text-slate-100');
+            bubble.textContent=message.text;
+            row.append(name,bubble);
+            list.appendChild(row);
+        });
+        document.getElementById('chat-status').textContent=snapshot.numChildren()+' recent messages · room chat';
+        if(wasNearBottom)list.scrollTop=list.scrollHeight;
+    },error=>{
+        document.getElementById('chat-status').textContent='Chat unavailable: '+error.message;
+    });
+}
+function closeChat(){document.getElementById('chat-modal').classList.add('hidden')}
+document.getElementById('chat-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const input=document.getElementById('chat-input');
+    const text=input.value.trim();
+    if(!text)return;
+    const sendButton=document.getElementById('chat-send');
+    sendButton.disabled=true;
+    try{
+        await roomRef.child('chatMessages').push({name:myName,playerId:playerId,text:text,sentAt:firebase.database.ServerValue.TIMESTAMP});
+        input.value='';
+        input.focus();
+    }catch(error){
+        console.warn('Could not send chat message:',error);
+        document.getElementById('chat-status').textContent='Message did not send. Check Firebase access and connection.';
+    }finally{sendButton.disabled=false}
+});
 function openTaggedModal(){document.getElementById('tagged-modal').classList.remove('hidden')}
 function closeTaggedModal(){document.getElementById('tagged-modal').classList.add('hidden')}
 function confirmTagged(tagged){closeTaggedModal();if(tagged)myPlayerRef.update({eliminated:true,eliminatedAt:Date.now()}).catch(e=>{console.warn('Could not save eliminated status:',e);alert('Could not save status. Check your connection.')})}
