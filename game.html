@@ -67,7 +67,7 @@ const playerId=myName.replace(/[.#$\/\[\]]/g,'_');
 const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),myPlayerRef=playersRef.child(playerId),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus'),zoneStateRef=roomRef.child('zoneState');
 let assignedRole=localStorage.getItem('shadowhunt_assigned_role')||'SHADOW';
 let currentSettings={radius:'400 m',headstart:'2 min',matchLength:'30 min',shrinkInterval:'2 min'};
-let map,marker,accuracyCircle,zone,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
+let map,marker,accuracyCircle,zone,zoneEdge,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
 const remoteMarkers={},remoteAccuracyCircles={};
 let lastSentLocation=null,lastLocationWriteAt=0,currentHeading=0,compassEnabled=false,lastHeadingWriteAt=0,latestPlayers=null,revealActive=false,knownEliminations=new Set(),playersSnapshotInitialized=false,noticeTimeout=null;
 map=L.map('map',{zoomControl:false}).setView([28.6139,77.2090],16);
@@ -78,14 +78,12 @@ function setZone(center, showPreview = true){
     const zoneLocation=zoneCenter?[zoneCenter.lat,zoneCenter.lng]:center;
     const radius=activeZoneRadius||parseInt(currentSettings.radius,10)||400;
 
-    // Current safe zone: keep only gold boundary (removed white line)
     if(!zone){
         zone=L.circle(zoneLocation,{radius:radius,color:'#f5a623',weight:2.5,opacity:.95,dashArray:null,fillColor:'#f5a623',fillOpacity:.035,interactive:false}).addTo(map);
     }else{
         zone.setLatLng(zoneLocation).setRadius(radius);
     }
 
-    // Preview next zone only if showPreview is true
     const previewRadius=Math.max(10,Math.round(radius*0.85));
     if(showPreview){
         if(!nextZonePreview){
@@ -133,7 +131,7 @@ function checkZoneBoundary(lat,lng){
 }
 function updateZoneShrink(elapsed){
     const intervalMs=durationMs(currentSettings.shrinkInterval||'2 min',2);
-    const shrinkDurationMs=10000; // Every shrink takes exactly 10 seconds.
+    const shrinkDurationMs=10000;
     const shrinkCount=intervalMs>0?Math.floor(elapsed/intervalMs):0;
     const shrinkStart=shrinkCount*intervalMs;
     const previousRadius=activeZoneRadius;
@@ -143,8 +141,6 @@ function updateZoneShrink(elapsed){
     const shrinking=shrinkCount>0 && timeIntoCycle<shrinkDurationMs;
     const shrinkProgress=shrinking?Math.min(1,timeIntoCycle/shrinkDurationMs):0;
 
-    // During the 10-second transition, animate from the old radius to the new one.
-    // Otherwise keep the current safe radius stable until the next shrink.
     activeZoneRadius=shrinking
         ? Math.max(10,startRadius+(targetRadius-startRadius)*shrinkProgress)
         : startRadius;
@@ -216,10 +212,14 @@ function updateRemotePlayers(players){
 }
 playersRef.on('value',snapshot=>{
     const players=snapshot.val()||{},eliminatedNow=new Set();
-    let survivorCount=0;
+    let survivorCount=0, totalShadows=0, eliminatedShadows=0;
     Object.entries(players).forEach(([id,p])=>{
         if(!p)return;
-        if(p.assignedRole==='SHADOW'&&!p.eliminated)survivorCount++;
+        if(p.assignedRole==='SHADOW'){
+            totalShadows++;
+            if(!p.eliminated) survivorCount++;
+            else eliminatedShadows++;
+        }
         if(p.eliminated){
             eliminatedNow.add(id);
             if(playersSnapshotInitialized&&!knownEliminations.has(id)){
@@ -231,6 +231,10 @@ playersRef.on('value',snapshot=>{
             }
         }
     });
+    
+    if(totalShadows > 0 && eliminatedShadows === totalShadows && playersSnapshotInitialized) {
+        showResultsScreen(true);
+    }
     knownEliminations=eliminatedNow;playersSnapshotInitialized=true;
     document.getElementById('survivor-count').textContent='SURVIVORS: '+survivorCount;
     latestPlayers=players;updateRemotePlayers(players);
@@ -280,7 +284,11 @@ function startTimers(settings,startedAt){
         document.getElementById('reveal-in').textContent=inReveal?'NOW':formatTime(revealIn);
         document.getElementById('reveal-visible').textContent=inReveal?formatTime(visibleFor):'—';
         updateRemotePlayers(latestPlayers);
-        if(matchLeft===0)clearInterval(matchInterval);
+        if(matchLeft===0 || (latestPlayers && Object.values(latestPlayers).some(p=>p && p.assignedRole==='SHADOW') && Object.values(latestPlayers).filter(p=>p && p.assignedRole==='SHADOW').every(p=>p.eliminated))) {
+            clearInterval(matchInterval);
+            const huntersWon = latestPlayers && Object.values(latestPlayers).filter(p=>p && p.assignedRole==='SHADOW').every(p=>p.eliminated);
+            showResultsScreen(huntersWon);
+        }
     }
     update();matchInterval=setInterval(update,100);
 }
