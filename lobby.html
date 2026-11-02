@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowHunt — Lobby</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 selection:bg-purple-500 selection:text-white">
+
+    <!-- Top Header with Profile & Settings Icon -->
+    <header class="max-w-md w-full mx-auto flex justify-between items-center py-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-purple-950 border border-purple-500/30 rounded-2xl flex items-center justify-center font-mono font-bold text-sm text-purple-300" id="user-initials">
+                AG
+            </div>
+            <div>
+                <span id="display-name" class="font-extrabold text-sm text-white block tracking-wide">AGENT</span>
+                <span class="text-[10px] text-slate-400">Online Operative</span>
+            </div>
+        </div>
+        <!-- Settings / Operative File Icon -->
+        <button onclick="openSettingsModal()" class="w-10 h-10 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer shadow-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+    </header>
+
+    <!-- Main Lobby Hub -->
+    <main class="max-w-md w-full mx-auto space-y-4 my-auto w-full py-6">
+        
+        <!-- Host Game Card -->
+        <a href="host.html" class="block bg-gradient-to-r from-purple-950/60 to-slate-900 border border-purple-500/30 p-6 rounded-3xl hover:border-purple-500/60 transition shadow-xl group">
+            <div class="flex justify-between items-center">
+                <div class="space-y-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">Command</span>
+                    <h2 class="text-xl font-black text-white tracking-wide">Host a Game</h2>
+                    <p class="text-xs text-slate-400">Create a secure zone, set radius and rules.</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-600/20 border border-purple-500/40 rounded-2xl flex items-center justify-center text-purple-300 text-lg group-hover:scale-105 transition">
+                    Host
+                </div>
+            </div>
+        </a>
+
+        <!-- Join Game Card -->
+        <a href="join.html" class="block bg-slate-900/90 border border-slate-800/80 p-6 rounded-3xl hover:border-slate-700 transition shadow-xl group">
+            <div class="flex justify-between items-center">
+                <div class="space-y-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Infiltration</span>
+                    <h2 class="text-xl font-black text-white tracking-wide">Join a Game</h2>
+                    <p class="text-xs text-slate-400">Enter a 4-digit room code to infiltrate.</p>
+                </div>
+                <div class="w-12 h-12 bg-slate-800 border border-slate-700 rounded-2xl flex items-center justify-center text-slate-300 text-lg group-hover:scale-105 transition">
+                    Join
+                </div>
+            </div>
+        </a>
+
+    </main>
+
+    <!-- Footer Status -->
+    <footer class="max-w-md w-full mx-auto text-center py-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
+        ShadowHunt Tactical · Secure Protocol
+    </footer>
+
+    <!-- OPERATIVE FILE / SETTINGS MODAL (Matching your screenshot) -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+        <div class="bg-slate-950 border border-slate-800/80 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-6 shadow-2xl">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center border-b border-slate-900 pb-4">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Operative File</span>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
+            </div>
+
+            <!-- Profile Overview -->
+            <div class="text-center space-y-1">
+                <h2 id="modal-username" class="text-xl font-black text-white tracking-wider uppercase">AGENT</h2>
+                <p id="modal-email" class="text-xs text-slate-400 font-mono">hello.dilmeet@gmail.com</p>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest pt-1">Operative Since Oct 2026</p>
+            </div>
+
+            <!-- Career Score Card -->
+            <div class="bg-slate-900/80 border border-slate-800/60 p-5 rounded-2xl text-center space-y-1">
+                <div class="text-3xl font-mono font-black text-purple-400 tracking-wider">130</div>
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Career Score</div>
+            </div>
+
+            <!-- Lifetime Stats Grid (2x3) -->
+            <div class="space-y-2">
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-1">Lifetime Stats</div>
+                <div class="grid grid-cols-2 gap-3 text-left">
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">3</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Matches Played</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">2</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Matches Won</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">67%</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Win Rate</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">1</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Hunter Tags</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">1</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Shadow Escapes</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">482 m</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Distance Covered</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Management Section -->
+            <div class="space-y-2 pt-2">
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-1">Account</div>
+                <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 text-sm font-bold">
+                    
+                    <!-- Change Codename Option -->
+                    <button onclick="changeCodename()" class="w-full flex justify-between items-center p-4 hover:bg-slate-800/50 transition cursor-pointer">
+                        <div class="flex items-center gap-3 text-slate-200">
+                            <span>✏️</span> Change Codename
+                        </div>
+                        <span class="text-slate-500">›</span>
+                    </button>
+
+                    <!-- Safety & Legal -->
+                    <div class="flex justify-between items-center p-4 text-slate-200">
+                        <div class="flex items-center gap-3">
+                            <span>🛡️</span> Safety & Legal
+                        </div>
+                        <span class="text-slate-500">›</span>
+                    </div>
+
+                    <!-- Sign Out / Logout Option -->
+                    <button onclick="signOut()" class="w-full flex justify-between items-center p-4 hover:bg-rose-950/20 text-rose-400 transition cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <span>🚪</span> Sign Out
+                        </div>
+                        <span class="text-rose-500">›</span>
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- Footer brand inside modal -->
+            <div class="text-center pt-2 pb-1 text-[9px] font-extrabold uppercase tracking-widest text-slate-600">
+                ShadowHunt Tactical · Honour Protocol
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Load Saved User Profile
+        const currentName = localStorage.getItem('shadowhunt_codename') || 'AGENT';
+        document.getElementById('display-name').innerText = currentName;
+        document.getElementById('modal-username').innerText = currentName;
+        document.getElementById('user-initials').innerText = currentName.substring(0, 2).toUpperCase();
+
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        // Change Codename Functionality
+        function changeCodename() {
+            const newName = prompt("Enter new operative codename:", currentName);
+            if (newName && newName.trim() !== "") {
+                const formatted = newName.trim().toUpperCase();
+                localStorage.setItem('shadowhunt_codename', formatted);
+                document.getElementById('display-name').innerText = formatted;
+                document.getElementById('modal-username').innerText = formatted;
+                document.getElementById('user-initials').innerText = formatted.substring(0, 2).toUpperCase();
+                alert("Codename updated successfully to: " + formatted);
+            }
+        }
+
+        // Sign Out / Logout Functionality
+        function signOut() {
+            if (confirm("Are you sure you want to sign out?")) {
+                localStorage.removeItem('shadowhunt_codename');
+                sessionStorage.clear();
+                window.location.href = 'auth.html'; // Redirect to login page
+            }
+        }
+    </script>
+</body>
+</html>

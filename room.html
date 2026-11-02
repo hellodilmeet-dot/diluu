@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowHunt — Mission Room</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; transition: background-color 0.5s ease; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        #map { position: absolute; inset: 0; z-index: 0; }
+        .leaflet-control-attribution, .leaflet-control-zoom { display: none !important; }
+    </style>
+</head>
+<body id="page-body" class="min-h-screen flex flex-col justify-between p-4 selection:bg-purple-500 selection:text-white relative">
+
+    <!-- ==================== VIEW 1: LOBBY VIEW ==================== -->
+    <div id="lobby-view" class="min-h-screen flex flex-col justify-between w-full max-w-md mx-auto relative z-10">
+        <!-- Top Header -->
+        <header class="flex justify-between items-center py-3">
+            <a href="lobby.html" class="text-slate-400 hover:text-white text-lg font-bold">‹</a>
+            <span class="font-bold tracking-wider text-sm text-slate-200">Lobby</span>
+            <a href="lobby.html" class="text-rose-400 hover:text-rose-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            </a>
+        </header>
+
+        <!-- Main Lobby Container -->
+        <main class="space-y-4 my-auto w-full">
+            <!-- ROOM CODE CARD -->
+            <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl space-y-4 backdrop-blur-xl">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Room Code</span>
+                    <button onclick="copyCode()" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-500/30 text-purple-300 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                        📋 COPY
+                    </button>
+                </div>
+                <div id="room-code-txt" class="text-3xl font-mono font-black text-white tracking-widest">
+                    ----
+                </div>
+            </div>
+
+            <!-- SHARE CODE & SETTINGS / RULES BUTTONS -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="shareCode()" class="bg-slate-900/90 hover:bg-slate-900 border border-emerald-500/40 text-emerald-400 font-bold py-3.5 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-lg">
+                    <span>🔗</span> SHARE CODE
+                </button>
+                <button id="action-btn" onclick="handleActionButton()" class="bg-slate-900/90 hover:bg-slate-900 border border-purple-500/40 text-purple-300 font-bold py-3.5 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-lg">
+                    <span>⚙️</span> SETTINGS
+                </button>
+            </div>
+
+            <!-- SETTINGS SUMMARY BAR -->
+            <div class="bg-slate-900/50 border border-slate-800/60 px-4 py-3 rounded-2xl flex items-center gap-2 text-xs text-slate-400 overflow-x-auto whitespace-nowrap">
+                <span>⚙️</span>
+                <span id="sum-radius">400m zone</span>
+                <span>·</span>
+                <span id="sum-hunters">1 hunter</span>
+                <span>·</span>
+                <span id="sum-ping">180s pulse</span>
+                <span>·</span>
+                <span id="sum-match">30m</span>
+                <span class="ml-auto text-slate-500">›</span>
+            </div>
+
+            <!-- PLAYERS SECTION -->
+            <div class="space-y-3 pt-2">
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Players</span>
+                    <span id="joined-count" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-full">1 joined</span>
+                </div>
+                <!-- Players List Box -->
+                <div id="players-list" class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-3xl space-y-2 min-h-[140px] max-h-[220px] overflow-y-auto">
+                    <!-- Players list -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Action Container -->
+        <div class="pt-4 pb-2 w-full" id="bottom-action-container">
+            <!-- Dynamic button -->
+        </div>
+    </div>
+
+
+    <!-- ==================== VIEW 2: ROLE REVEAL VIEW ==================== -->
+    <div id="role-view" class="min-h-screen flex flex-col justify-between w-full max-w-md mx-auto p-2 hidden relative z-10">
+        <div class="my-auto"></div>
+        <div id="role-container" class="text-center space-y-4 w-full my-auto">
+            <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <h2 class="text-2xl font-black text-white tracking-widest uppercase">Assigning Roles...</h2>
+            <p class="text-xs text-slate-400">Configuring radar and stealth channels</p>
+        </div>
+        <div id="battlefield-btn-container" class="w-full pt-4 pb-6 hidden">
+            <button onclick="joinBattlefield()" id="join-battle-btn" class="w-full bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white font-extrabold py-4 rounded-2xl shadow-xl shadow-purple-950 transition text-sm tracking-widest uppercase cursor-pointer">
+                Join in Battlefield (<span id="timer-count">5</span>s)
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ==================== VIEW 3: BATTLEFIELD GAMEPLAY VIEW ==================== -->
+    <div id="game-view" class="absolute inset-0 z-20 flex flex-col justify-between p-4 pointer-events-none hidden">
+        <!-- MAP CONTAINER -->
+        <div id="map"></div>
+
+        <!-- TOP HEADER & HEADSTART STATUS -->
+        <header class="relative z-30 w-full max-w-md mx-auto space-y-2 pointer-events-none">
+            <div class="bg-slate-950/80 border border-slate-800/80 p-3.5 rounded-2xl backdrop-blur-md shadow-2xl space-y-1.5 pointer-events-auto">
+                <div class="text-[10px] font-extrabold tracking-widest text-amber-400 uppercase">Headstart Countdown</div>
+                <div class="flex justify-between items-center">
+                    <span id="match-timer" class="text-3xl font-mono font-black text-amber-300 tracking-wider">30:00</span>
+                    <div id="zone-txt" class="bg-slate-900/90 border border-slate-700/60 px-3 py-1.5 rounded-xl font-mono text-xs font-bold text-amber-200">
+                        ZONE 400m
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-950/80 border border-slate-800/80 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-xl flex justify-between items-center pointer-events-auto">
+                <div id="game-role-badge" class="px-3 py-1 rounded-lg font-mono text-xs font-black uppercase tracking-wider bg-purple-950 text-purple-300 border border-purple-500/40">
+                    SHADOW
+                </div>
+                <span id="runners-count-txt" class="font-mono text-xs font-bold text-slate-300 uppercase tracking-wide">RUNNERS: 1 of 1</span>
+            </div>
+
+            <div id="game-status-bar" class="bg-slate-950/90 border border-amber-500/40 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-xl flex items-center justify-between pointer-events-auto">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                    <span id="game-status-title" class="font-mono text-xs font-black text-amber-300 tracking-wider uppercase">RUNNERS SCATTER</span>
+                </div>
+                <span id="headstart-timer" class="font-mono text-xs font-bold text-amber-200">03:00</span>
+            </div>
+        </header>
+
+        <!-- FLOATING SIDE BUTTONS -->
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-3 pointer-events-auto">
+            <button onclick="openChat()" class="w-12 h-12 bg-slate-950/90 hover:bg-slate-900 border border-slate-700/80 rounded-2xl flex items-center justify-center text-purple-400 shadow-xl cursor-pointer backdrop-blur-md transition active:scale-95">💬</button>
+            <button onclick="centerMap()" class="w-12 h-12 bg-slate-950/90 hover:bg-slate-900 border border-slate-700/80 rounded-2xl flex items-center justify-center text-emerald-400 shadow-xl cursor-pointer backdrop-blur-md transition active:scale-95">📍</button>
+        </div>
+
+        <!-- BOTTOM ACTION CONTAINER -->
+        <footer class="relative z-30 w-full max-w-md mx-auto pb-2 pointer-events-none">
+            <div id="tagged-btn-container" class="pointer-events-auto hidden">
+                <button onclick="openTaggedModal()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white font-black py-4 rounded-2xl shadow-xl shadow-rose-950 transition text-sm tracking-widest uppercase flex items-center justify-center gap-2 cursor-pointer border border-rose-400/40">
+                    🏳️ I GOT TAGGED
+                </button>
+            </div>
+        </footer>
+    </div>
+
+
+    <!-- HOST SETTINGS MODAL -->
+    <div id="host-settings-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-slate-950 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800/80 pb-4">
+                <h3 class="font-black text-white text-lg tracking-wide">Edit Room Settings</h3>
+                <button onclick="closeHostSettings()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
+            </div>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Play Area Radius</label>
+                    <select id="edit-radius" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
+                        <option value="200 m">200 m</option>
+                        <option value="400 m">400 m</option>
+                        <option value="500 m">500 m</option>
+                        <option value="1000 m">1000 m</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Hunters Count</label>
+                    <select id="edit-hunters" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
+                        <option value="1">1 Hunter</option>
+                        <option value="2">2 Hunters</option>
+                        <option value="3">3 Hunters</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Match Length</label>
+                    <select id="edit-match" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
+                        <option value="15 min">15 min</option>
+                        <option value="30 min">30 min</option>
+                        <option value="45 min">45 min</option>
+                        <option value="60 min">60 min</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="saveHostSettings()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3.5 rounded-2xl tracking-widest uppercase text-xs cursor-pointer shadow-lg">Save Settings</button>
+        </div>
+    </div>
+
+    <!-- RULES MODAL -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-slate-950 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800/80 pb-4">
+                <h3 class="font-black text-white text-lg tracking-wide">Match Rules</h3>
+                <button onclick="closeRules()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
+            </div>
+            <div class="space-y-3 font-medium text-sm text-slate-300">
+                <div class="flex justify-between py-2 border-b border-slate-900"><span>Play area radius</span><span id="rule-radius" class="font-mono text-purple-400 font-bold">400 m</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-900"><span>Hunters</span><span id="rule-hunters" class="font-mono text-purple-400 font-bold">1</span></div>
+                <div class="flex justify-between py-2"><span>Match length</span><span id="rule-match" class="font-mono text-purple-400 font-bold">30 min</span></div>
+            </div>
+            <button onclick="closeRules()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3.5 rounded-2xl tracking-widest uppercase text-xs cursor-pointer">✓ Done</button>
+        </div>
+    </div>
+
+    <!-- TAGGED CONFIRMATION MODAL -->
+    <div id="tagged-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-950 border border-slate-800 w-full max-w-xs rounded-3xl p-6 text-center space-y-5 shadow-2xl">
+            <h3 class="font-black text-white text-lg tracking-wide uppercase">Confirm Tagged Status</h3>
+            <p class="text-xs text-slate-400">Were you caught by the Hunter?</p>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="confirmTagged(true)" class="bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3 rounded-2xl text-xs uppercase tracking-wider cursor-pointer">Yes</button>
+                <button onclick="closeTaggedModal()" class="bg-slate-900 hover:bg-slate-800 text-slate-300 font-extrabold py-3 rounded-2xl text-xs uppercase tracking-wider cursor-pointer">No</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Leaflet JS & Firebase SDK -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script>
+          const firebaseConfig = {
+  apiKey: "AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",
+  authDomain: "diluu-d8441.firebaseapp.com",
+  projectId: "diluu-d8441",
+  storageBucket: "diluu-d8441.firebasestorage.app",
+  messagingSenderId: "28253953439",
+  appId: "1:28253953439:web:f1f4266ca95c980ee831aa",
+  measurementId: "G-E1ELEEX02N"
+};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomCode = urlParams.get('code');
+        if (!roomCode) {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            roomCode = "";
+            for(let i=0; i<4; i++) roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('room-code-txt').innerText = roomCode.toUpperCase();
+
+        const myName = localStorage.getItem('shadowhunt_codename') || 'AGENT_' + Math.floor(Math.random()*100);
+        const playerIdKey = myName.replace(/[.#$\/\[\]]/g, '_');
+
+        const roomRef = db.ref('rooms/' + roomCode);
+        const playersRef = roomRef.child('players');
+        const settingsRef = roomRef.child('settings');
+        const gameStatusRef = roomRef.child('gameStatus');
+
+        let isUserHost = false;
+        let countdownInterval = null;
+        let hasJoinedBattlefield = false;
+        let map = null, myMarker = null;
+        let assignedRole = 'SHADOW';
+        let matchTimerInterval = null;
+        let headstartTimerInterval = null;
+
+        roomRef.once('value', snapshot => {
+            const data = snapshot.val();
+            let role = 'GUEST';
+            
+            if (!data || !data.host) {
+                roomRef.update({ host: myName });
+                role = 'HOST';
+                isUserHost = true;
+                settingsRef.set({ radius: "400 m", hunters: 1, matchLength: "30 min" });
+            } else if (data.host === myName) {
+                role = 'HOST';
+                isUserHost = true;
+            } else {
+                isUserHost = false;
+            }
+
+            if (!isUserHost) {
+                document.getElementById('action-btn').innerHTML = `<span>📋</span> RULES`;
+            }
+
+            const playerRef = playersRef.child(playerIdKey);
+            playerRef.set({ name: myName, role: role, assignedRole: 'PENDING', joinedAt: Date.now() });
+            playerRef.onDisconnect().remove();
+        });
+
+        // Live Real-Time Settings synchronization
+        settingsRef.on('value', snapshot => {
+            const s = snapshot.val();
+            if (s) {
+                document.getElementById('sum-radius').innerText = s.radius;
+                document.getElementById('sum-hunters').innerText = s.hunters + ' hunter';
+                document.getElementById('sum-match').innerText = s.matchLength;
+                document.getElementById('rule-radius').innerText = s.radius;
+                document.getElementById('rule-hunters').innerText = s.hunters;
+                document.getElementById('rule-match').innerText = s.matchLength;
+
+                document.getElementById('zone-txt').innerText = `ZONE ${s.radius}`;
+
+                if(document.getElementById('edit-radius')) document.getElementById('edit-radius').value = s.radius;
+                if(document.getElementById('edit-hunters')) document.getElementById('edit-hunters').value = s.hunters;
+                if(document.getElementById('edit-match')) document.getElementById('edit-match').value = s.matchLength;
+            }
+        });
+
+        function handleActionButton() {
+            if (isUserHost) {
+                document.getElementById('host-settings-modal').classList.remove('hidden');
+            } else {
+                document.getElementById('rules-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeHostSettings() { document.getElementById('host-settings-modal').classList.add('hidden'); }
+        function closeRules() { document.getElementById('rules-modal').classList.add('hidden'); }
+
+        function saveHostSettings() {
+            settingsRef.update({
+                radius: document.getElementById('edit-radius').value,
+                hunters: parseInt(document.getElementById('edit-hunters').value),
+                matchLength: document.getElementById('edit-match').value
+            }).then(() => {
+                alert("Settings updated successfully!");
+                closeHostSettings();
+            });
+        }
+
+        function triggerStartMission() {
+            settingsRef.once('value', sSnap => {
+                const settings = sSnap.val() || { hunters: 1 };
+                const targetHuntersCount = Number(settings.hunters) || 1;
+
+                playersRef.once('value', pSnap => {
+                    const playersObj = pSnap.val();
+                    if (!playersObj) return;
+
+                    let playerIds = Object.keys(playersObj);
+                    playerIds.sort(() => Math.random() - 0.5);
+
+                    let updates = {};
+                    playerIds.forEach((id, index) => {
+                        let assigned = (index < targetHuntersCount) ? 'HUNTER' : 'SHADOW';
+                        updates[id + '/assignedRole'] = assigned;
+                    });
+
+                    playersRef.update(updates).then(() => {
+                        gameStatusRef.set({ started: true });
+                    });
+                });
+            });
+        }
+
+        gameStatusRef.on('value', snapshot => {
+            const status = snapshot.val();
+            if (status && status.started) {
+                document.getElementById('lobby-view').classList.add('hidden');
+                document.getElementById('role-view').classList.remove('hidden');
+
+                setTimeout(() => {
+                    playersRef.child(playerIdKey).once('value', pSnap => {
+                        const pData = pSnap.val();
+                        assignedRole = (pData && pData.assignedRole) ? pData.assignedRole : 'SHADOW';
+
+                        const bodyEl = document.getElementById('page-body');
+                        const containerEl = document.getElementById('role-container');
+
+                        if (assignedRole === 'HUNTER') {
+                            bodyEl.style.backgroundColor = '#450a0a';
+                            containerEl.innerHTML = `
+                                <div class="bg-rose-950/90 border border-rose-500/50 p-8 rounded-3xl space-y-4 shadow-2xl backdrop-blur-xl">
+                                    <span class="text-5xl">🎯</span>
+                                    <h1 class="text-3xl font-black text-rose-400 uppercase tracking-widest">YOU ARE A HUNTER</h1>
+                                    <p class="text-xs text-rose-200">Hunt down all shadows before time runs out!</p>
+                                </div>
+                            `;
+                        } else {
+                            bodyEl.style.backgroundColor = '#022c22';
+                            containerEl.innerHTML = `
+                                <div class="bg-emerald-950/90 border border-emerald-500/50 p-8 rounded-3xl space-y-4 shadow-2xl backdrop-blur-xl">
+                                    <span class="text-5xl">👤</span>
+                                    <h1 class="text-3xl font-black text-emerald-400 uppercase tracking-widest">YOU ARE A SHADOW</h1>
+                                    <p class="text-xs text-emerald-200">Stay hidden and survive the pursuit!</p>
+                                </div>
+                            `;
+                        }
+
+                        document.getElementById('battlefield-btn-container').classList.remove('hidden');
+                        startBattlefieldTimer();
+                    });
+                }, 1500);
+            }
+        });
+
+        function startBattlefieldTimer() {
+            let timeLeft = 5;
+            const timerEl = document.getElementById('timer-count');
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                if (timerEl) timerEl.innerText = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    if (!hasJoinedBattlefield) {
+                        joinBattlefield();
+                    }
+                }
+            }, 1000);
+        }
+
+        function joinBattlefield() {
+            if (hasJoinedBattlefield) return;
+            hasJoinedBattlefield = true;
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            document.getElementById('role-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+
+            const gameRoleBadge = document.getElementById('game-role-badge');
+            if (assignedRole === 'HUNTER') {
+                gameRoleBadge.innerText = "HUNTER";
+                gameRoleBadge.className = "px-3 py-1 rounded-lg font-mono text-xs font-black uppercase tracking-wider bg-rose-950 text-rose-300 border border-rose-500/40";
+                document.getElementById('game-status-title').innerText = "HUNTERS LOCKED";
+            } else {
+                gameRoleBadge.innerText = "SHADOW";
+                gameRoleBadge.className = "px-3 py-1 rounded-lg font-mono text-xs font-black uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-500/40";
+                document.getElementById('game-status-title').innerText = "RUNNERS SCATTER";
+            }
+
+            initMap();
+            startLiveGameTimers();
+        }
+
+        // Live Timers for Battlefield Gameplay (Match Timer & Headstart Timer)
+        function startLiveGameTimers() {
+            // Match Timer (Default 30 Minutes countdown)
+            let matchSeconds = 30 * 60;
+            matchTimerInterval = setInterval(() => {
+                if (matchSeconds > 0) matchSeconds--;
+                let mins = Math.floor(matchSeconds / 60);
+                let secs = matchSeconds % 60;
+                document.getElementById('match-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+
+            // Headstart Timer (3 Minutes countdown, then unlock hunters & show Tagged button)
+            let headstartSeconds = 3 * 60;
+            headstartTimerInterval = setInterval(() => {
+                if (headstartSeconds > 0) {
+                    headstartSeconds--;
+                    let mins = Math.floor(headstartSeconds / 60);
+                    let secs = headstartSeconds % 60;
+                    document.getElementById('headstart-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                } else {
+                    clearInterval(headstartTimerInterval);
+                    // Headstart over: Update status text
+                    if (assignedRole === 'HUNTER') {
+                        document.getElementById('game-status-title').innerText = "GO FIND THEM";
+                    } else {
+                        document.getElementById('game-status-title').innerText = "HUNT ACTIVE";
+                        document.getElementById('tagged-btn-container').classList.remove('hidden'); // Show I Got Tagged button
+                    }
+                    document.getElementById('headstart-timer').innerText = "ACTIVE";
+                }
+            }, 1000);
+        }
+
+        function initMap() {
+            if (map) return;
+            map = L.map('map', { zoomControl: false }).setView([28.6139, 77.2090], 16);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    if (!myMarker) {
+                        myMarker = L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: assignedRole === 'HUNTER' ? "#e11d48" : "#10b981",
+                            color: "#fff",
+                            weight: 2,
+                            fillOpacity: 1
+                        }).addTo(map);
+                        map.setView([lat, lng], 17);
+                    } else {
+                        myMarker.setLatLng([lat, lng]);
+                    }
+                }, err => console.error(err), { enableHighAccuracy: true });
+            }
+        }
+
+        function centerMap() {
+            if (myMarker && map) map.setView(myMarker.getLatLng(), 17);
+        }
+
+        function openTaggedModal() { document.getElementById('tagged-modal').classList.remove('hidden'); }
+        function closeTaggedModal() { document.getElementById('tagged-modal').classList.add('hidden'); }
+
+        function confirmTagged(status) {
+            closeTaggedModal();
+            if (status) alert("Tagged status confirmed!");
+        }
+
+        function openChat() { alert("Chat feature opening..."); }
+
+        playersRef.on('value', snapshot => {
+            const players = snapshot.val();
+            const listEl = document.getElementById('players-list');
+            listEl.innerHTML = '';
+            
+            let count = 0;
+            if (players) {
+                Object.values(players).forEach(p => {
+                    count++;
+                    const initials = p.name ? p.name.substring(0, 2).toUpperCase() : 'AG';
+                    const isHostBadge = p.role === 'HOST';
+
+                    const item = document.createElement('div');
+                    item.className = "flex justify-between items-center bg-slate-950/80 border border-slate-800/60 p-3 rounded-2xl relative";
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="relative w-10 h-10 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center font-mono font-bold text-xs text-slate-300">
+                                ${initials}
+                                ${isHostBadge ? '<span class="absolute -top-1.5 -left-1.5 bg-amber-500 text-black text-[9px] w-4 h-4 rounded-full flex items-center font-black shadow">★</span>' : ''}
+                            </div>
+                            <span class="font-bold text-sm text-white tracking-wide">${p.name}</span>
+                        </div>
+                        <span class="text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider ${isHostBadge ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">
+                            ${p.role}
+                        </span>
+                    `;
+                    listEl.appendChild(item);
+                });
+            }
+
+            document.getElementById('joined-count').innerText = count + ' joined';
+
+            const actionContainer = document.getElementById('bottom-action-container');
+            if (isUserHost) {
+                if (count >= 2) {
+                    actionContainer.innerHTML = `
+                        <button id="start-btn" onclick="triggerStartMission()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white font-extrabold py-4 rounded-2xl text-sm tracking-wider cursor-pointer shadow-xl shadow-rose-950 transition">
+                            ▶ START MISSION
+                        </button>
+                    `;
+                } else {
+                    actionContainer.innerHTML = `
+                        <button id="start-btn" disabled class="w-full bg-slate-900 border border-slate-800 text-slate-500 font-extrabold py-4 rounded-2xl text-sm tracking-wider cursor-not-allowed transition shadow-xl">
+                            ▶ NEED 2+ PLAYERS TO START
+                        </button>
+                    `;
+                }
+            } else {
+                actionContainer.innerHTML = `
+                    <div class="w-full bg-slate-900/90 border border-slate-800 text-slate-400 font-bold py-4 rounded-2xl text-xs tracking-widest text-center uppercase shadow-xl flex items-center justify-center gap-2">
+                        <span class="animate-pulse text-purple-400">⏳</span> Waiting for host to start...
+                    </div>
+                `;
+            }
+        });
+
+        function copyCode() {
+            navigator.clipboard.writeText(roomCode);
+            alert("Room code copied: " + roomCode);
+        }
+
+        function shareCode() {
+            if (navigator.share) {
+                navigator.share({ title: 'ShadowHunt Mission', text: 'Join my game with code: ' + roomCode, url: window.location.href });
+            } else {
+                copyCode();
+            }
+        }
+    </script>
+</body>
+</html>

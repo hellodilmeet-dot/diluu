@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowHunt — Sign In</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-center items-center px-4 selection:bg-purple-500 selection:text-white">
+
+    <div class="w-full max-w-md mx-auto space-y-6 text-center">
+        <h1 class="text-3xl font-black tracking-wider text-white">SHADOWHUNT</h1>
+        <div class="w-12 h-1 bg-purple-600 mx-auto rounded-full -mt-3"></div>
+
+        <div class="bg-slate-900/90 border border-slate-800/80 p-8 rounded-3xl shadow-2xl text-left backdrop-blur-xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="form-title" class="text-xl font-bold text-white">Welcome back[cite: 4].</h2>
+                <button onclick="toggleAuthMode()" id="toggle-btn" class="text-xs font-semibold text-purple-400 hover:text-purple-300 transition cursor-pointer">Sign up[cite: 4]</button>
+            </div>
+
+            <div id="error-box" class="hidden mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+
+            <form onsubmit="handleAuth(event)" class="space-y-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500 text-lg">@</span>
+                    <input type="email" id="email" required placeholder="Email address[cite: 4]" class="w-full pl-11 pr-4 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 text-sm">
+                </div>
+                <div class="relative">
+                    <input type="password" id="password" required placeholder="Password[cite: 4]" class="w-full pl-4 pr-12 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 text-sm">
+                </div>
+                <button type="submit" id="submit-btn" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3.5 rounded-xl transition text-sm tracking-wider cursor-pointer">
+                    → SIGN IN[cite: 4]
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <a href="index.html" class="text-xs text-slate-500 hover:text-slate-300 transition">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+    const savedName = localStorage.getItem('shadowhunt_codename');
+    if (savedName) {
+        // Agar naam pehle se save hai, toh login page skip karke seedha lobby mein bhej do
+        window.location.href = 'lobby.html';
+    }
+});
+
+// Jab user apna codename enter karke submit kare
+function handleLogin() {
+    const nameInput = document.getElementById('codename-input').value.trim();
+    if (nameInput) {
+        // LocalStorage mein save kar lo taaki baar-baar login na karna pade
+        localStorage.setItem('shadowhunt_codename', nameInput);
+        window.location.href = 'lobby.html';
+    }
+}
+          const firebaseConfig = {
+  apiKey: "AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",
+  authDomain: "diluu-d8441.firebaseapp.com",
+  projectId: "diluu-d8441",
+  storageBucket: "diluu-d8441.firebasestorage.app",
+  messagingSenderId: "28253953439",
+  appId: "1:28253953439:web:f1f4266ca95c980ee831aa",
+  measurementId: "G-E1ELEEX02N"
+};
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        let isSignUp = false;
+
+        function toggleAuthMode() {
+            isSignUp = !isSignUp;
+            document.getElementById('form-title').innerText = isSignUp ? "Create account." : "Welcome back[cite: 4].";
+            document.getElementById('toggle-btn').innerText = isSignUp ? "Sign in[cite: 4]" : "Sign up[cite: 4]";
+            document.getElementById('submit-btn').innerText = isSignUp ? "→ SIGN UP" : "→ SIGN IN[cite: 4]";
+        }
+
+        function handleAuth(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errBox = document.getElementById('error-box');
+            errBox.classList.add('hidden');
+
+            const authAction = isSignUp ? 
+                auth.createUserWithEmailAndPassword(email, password) : 
+                auth.signInWithEmailAndPassword(email, password);
+
+            authAction.then(() => {
+                // Login successful hone ke baad direct onboarding page par bhej dega
+                window.location.href = "onboarding.html";
+            }).catch((error) => {
+                errBox.innerText = error.message;
+                errBox.classList.remove('hidden');
+            });
+        }
+    </script>
+</body>
+</html>

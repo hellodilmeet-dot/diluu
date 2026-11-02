@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowHunt — Join Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 selection:bg-purple-500 selection:text-white">
+
+    <!-- Top Header -->
+    <header class="max-w-md w-full mx-auto flex justify-between items-center py-3">
+        <a href="lobby.html" class="text-slate-400 hover:text-white text-lg font-bold">‹ Back</a>
+        <span class="font-bold tracking-wider text-sm text-slate-200">Join a game</span>
+        <div class="w-8"></div>
+    </header>
+
+    <!-- Main Form Container -->
+    <main class="max-w-md w-full mx-auto space-y-6 my-auto w-full">
+        
+        <div class="bg-slate-900/90 border border-slate-800/80 p-6 rounded-3xl space-y-4 backdrop-blur-xl shadow-2xl">
+            <div class="space-y-1">
+                <label class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Enter Room Code</label>
+                <p class="text-xs text-slate-500">Type the 4-digit code provided by the host.</p>
+            </div>
+
+            <!-- Code Input Box -->
+            <input type="text" id="room-code-input" maxlength="4" placeholder="e.g. QGZ4" class="w-full bg-slate-950 border border-slate-800 text-center text-3xl font-mono font-black text-purple-400 uppercase tracking-widest py-4 rounded-2xl focus:outline-none focus:border-purple-500 transition">
+
+            <!-- Error Message Box -->
+            <p id="error-msg" class="text-xs font-bold text-rose-500 text-center hidden">Invalid or expired room code!</p>
+        </div>
+
+        <!-- Join Room Button -->
+        <button onclick="joinRoom()" class="w-full bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white font-extrabold py-4 rounded-2xl shadow-xl shadow-purple-950 transition text-sm tracking-widest uppercase cursor-pointer">
+            Join Room
+        </button>
+
+    </main>
+
+    <!-- Footer Space -->
+    <div class="max-w-md w-full mx-auto py-2"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script>
+          const firebaseConfig = {
+  apiKey: "AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",
+  authDomain: "diluu-d8441.firebaseapp.com",
+  projectId: "diluu-d8441",
+  storageBucket: "diluu-d8441.firebasestorage.app",
+  messagingSenderId: "28253953439",
+  appId: "1:28253953439:web:f1f4266ca95c980ee831aa",
+  measurementId: "G-E1ELEEX02N"
+};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function joinRoom() {
+            let code = document.getElementById('room-code-input').value.trim().toUpperCase();
+            const errorEl = document.getElementById('error-msg');
+
+            if (code.length !== 4) {
+                errorEl.innerText = "Please enter a valid 4-digit code!";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            // Firebase mein check karega ki room exist karta hai ya nahi
+            db.ref('rooms/' + code).once('value').then(snapshot => {
+                if (snapshot.exists()) {
+                    // Valid room hone par room.html par bhej dega (Guest ban kar)
+                    window.location.href = 'room.html?code=' + code;
+                } else {
+                    errorEl.innerText = "Room code does not exist or expired!";
+                    errorEl.classList.remove('hidden');
+                }
+            }).catch(err => {
+                errorEl.innerText = "Connection error. Try again!";
+                errorEl.classList.remove('hidden');
+            });
+        }
+    </script>
+</body>
+</html>

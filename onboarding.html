@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowHunt — Choose Codename</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-center items-center px-4 selection:bg-purple-500 selection:text-white">
+
+    <div class="w-full max-w-md mx-auto space-y-6 text-center">
+        <!-- User Avatar Icon -->
+        <div class="flex justify-center">
+            <div class="w-20 h-20 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center shadow-xl">
+                <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+            </div>
+        </div>
+
+        <div>
+            <span class="inline-block bg-purple-950/80 border border-purple-500/30 text-purple-300 text-[10px] font-extrabold tracking-widest px-3 py-1 rounded-full uppercase mb-2">Step 1 of 1</span>
+            <h1 class="text-3xl lg:text-4xl font-black tracking-tight text-white">Choose your<br>Codename.</h1>
+            <p class="text-xs text-slate-400 mt-2">This is how other agents will see you in-game[cite: 5].</p>
+        </div>
+
+        <div class="bg-slate-900/90 border border-slate-800/80 p-6 rounded-3xl shadow-2xl text-left backdrop-blur-xl space-y-3">
+            <label class="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Codename</label>
+            <!-- User yahan apna koi bhi naya codename type karega -->
+            <input type="text" id="codename-input" placeholder="ENTER CODENAME" maxlength="16" class="w-full px-4 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-center tracking-wider focus:outline-none focus:border-purple-500 text-sm uppercase">
+            <div class="flex justify-between text-[11px] text-slate-500 px-1">
+                <span>3-16 characters · letters, numbers, _[cite: 5]</span>
+                <span id="char-count">0/16</span>
+            </div>
+        </div>
+
+        <button onclick="confirmCodename()" class="w-full bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white font-extrabold py-4 rounded-2xl shadow-lg shadow-purple-950 transition text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer">
+            ✓ CONFIRM CODENAME
+        </button>
+
+        <p class="text-[11px] text-slate-500">You can change this later in settings[cite: 5].</p>
+    </div>
+
+    <script>
+        const codenameInput = document.getElementById('codename-input');
+        
+        codenameInput.addEventListener('input', () => {
+            document.getElementById('char-count').innerText = codenameInput.value.length + '/16';
+        });
+
+        function confirmCodename() {
+            const codename = codenameInput.value.trim().toUpperCase();
+            
+            if(codename.length < 3) {
+                alert("Codename must be at least 3 characters[cite: 5]!");
+                return;
+            }
+
+            // User ka enter kiya hua codename browser mein save ho jayega
+            localStorage.setItem('shadowhunt_codename', codename);
+            
+            // Ab user lobby page par redirect ho jayega aur wahi naam wahan dikhega
+            window.location.href = "lobby.html";
+        }
+    </script>
+</body>
+</html>
