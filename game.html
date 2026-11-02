@@ -123,7 +123,6 @@ let map,marker,zone,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoa
 const remoteMarkers={},remoteAccuracyCircles={};
 let lastSentLocation=null,lastLocationWriteAt=0,currentHeading=0,compassEnabled=false,lastHeadingWriteAt=0,latestPlayers=null,revealActive=false,knownEliminations=new Set(),playersSnapshotInitialized=false,noticeTimeout=null;
 
-// Restrict map bounds & max zoom to keep view constrained around starting area (approx double area size)
 map=L.map('map',{zoomControl:false, minZoom: 15, maxZoom: 19}).setView([28.6139,77.2090],17);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,subdomains:'abc',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
 
@@ -168,7 +167,6 @@ function ensureZoneCenter(lat, lng){
             zoneBaseRadius = Number(state.baseRadius) || parseInt(currentSettings.radius, 10) || 400;
             activeZoneRadius = zoneBaseRadius;
             
-            // Restrict map max bounds to roughly double the starting base radius area
             const maxOffsetDeg = (zoneBaseRadius * 2) / 111320;
             const southWest = L.latLng(zoneCenter.lat - maxOffsetDeg, zoneCenter.lng - maxOffsetDeg);
             const northEast = L.latLng(zoneCenter.lat + maxOffsetDeg, zoneCenter.lng + maxOffsetDeg);
@@ -205,14 +203,12 @@ function updateZoneShrink(elapsed){
     const shrinking = shrinkCount > 0 && timeIntoCycle < shrinkDurationMs;
     const shrinkProgress = shrinking ? Math.min(1, timeIntoCycle / shrinkDurationMs) : 0;
 
-    // Random safe inner offset calculation strictly inside current base zone radius
     if(shrinking && timeIntoCycle < 500 && zoneCenter){
         const maxOffsetMeters = Math.max(5, startRadius - targetRadius);
         const randomAngle = Math.random() * 2 * Math.PI;
         const randomDist = Math.random() * (maxOffsetMeters * 0.5);
         const dLat = (randomDist * Math.cos(randomAngle)) / 111320;
         const dLng = (randomDist * Math.sin(randomAngle)) / (111320 * Math.cos(zoneCenter.lat * Math.PI / 180));
-        // Keep shrink center subtly shifted within allowed bounds
         zoneCenter = {lat: zoneCenter.lat + dLat, lng: zoneCenter.lng + dLng};
     }
 
@@ -345,13 +341,17 @@ function updateRemotePlayers(players){
 
 playersRef.on('value', snapshot => {
     const players = snapshot.val() || {}, eliminatedNow = new Set();
-    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0;
+    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0, hunterActive = false;
+    
     Object.entries(players).forEach(([id, p]) => {
         if(!p) return;
         if(p.assignedRole === 'SHADOW'){
             totalShadows++;
             if(!p.eliminated) survivorCount++;
             else eliminatedShadows++;
+        }
+        if(p.assignedRole === 'HUNTER'){
+            hunterActive = true;
         }
         if(p.eliminated){
             eliminatedNow.add(id);
@@ -365,9 +365,17 @@ playersRef.on('value', snapshot => {
         }
     });
     
-    if(totalShadows > 0 && eliminatedShadows === totalShadows && playersSnapshotInitialized) {
-        showResultsScreen(true);
+    // Check win/loss conditions:
+    // 1. If all shadows are eliminated -> Hunters win (true)
+    // 2. If hunter is missing / left (no active hunter in room) after game start -> Shadows win (false)
+    if(playersSnapshotInitialized) {
+        if(totalShadows > 0 && eliminatedShadows === totalShadows) {
+            showResultsScreen(true); // Hunters win
+        } else if(!hunterActive && gameStartedAt) {
+            showResultsScreen(false); // Shadows win because hunter left
+        }
     }
+
     knownEliminations = eliminatedNow; playersSnapshotInitialized = true;
     document.getElementById('survivor-count').textContent = 'SURVIVORS: ' + survivorCount;
     latestPlayers = players; updateRemotePlayers(players);
@@ -450,7 +458,7 @@ function startTimers(settings, startedAt){
         document.getElementById('reveal-visible').textContent = inReveal ? formatTime(visibleFor) : '—';
         updateRemotePlayers(latestPlayers);
         
-        if(matchLeft === 0 || (latestPlayers && Object.values(latestPlayers).some(p => p && p.assignedRole === 'SHADOW') && Object.values(latestPlayers).filter(p => p && p.assignedRole === 'SHADOW').every(p => p.eliminated))) {
+        if(matchLeft === 0) {
             clearInterval(matchInterval);
             const huntersWon = latestPlayers && Object.values(latestPlayers).filter(p => p && p.assignedRole === 'SHADOW').every(p => p.eliminated);
             showResultsScreen(huntersWon);
