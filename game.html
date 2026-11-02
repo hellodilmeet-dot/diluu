@@ -67,7 +67,7 @@ const playerId=myName.replace(/[.#$\/\[\]]/g,'_');
 const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),myPlayerRef=playersRef.child(playerId),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus'),zoneStateRef=roomRef.child('zoneState');
 let assignedRole=localStorage.getItem('shadowhunt_assigned_role')||'SHADOW';
 let currentSettings={radius:'400 m',headstart:'2 min',matchLength:'30 min',shrinkInterval:'2 min'};
-let map,marker,accuracyCircle,zone,zoneEdge,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
+let map,marker,accuracyCircle,zone,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
 const remoteMarkers={},remoteAccuracyCircles={};
 let lastSentLocation=null,lastLocationWriteAt=0,currentHeading=0,compassEnabled=false,lastHeadingWriteAt=0,latestPlayers=null,revealActive=false,knownEliminations=new Set(),playersSnapshotInitialized=false,noticeTimeout=null;
 map=L.map('map',{zoomControl:false}).setView([28.6139,77.2090],16);
@@ -342,6 +342,194 @@ window.addEventListener('resize',()=>map.invalidateSize());
 window.addEventListener('DOMContentLoaded', () => {
     enableCompass();
 });
+</script>
+
+<div id="results-modal" class="fixed inset-0 z-50 bg-[#05030a] overflow-y-auto p-4 hidden flex flex-col items-center justify-start text-white">
+<div class="w-full max-w-md space-y-5 pb-12 pt-4">
+    <h1 id="res-header-title" class="text-3xl font-black text-center tracking-tight text-white">Hunters won.</h1>
+    
+    <div class="bg-slate-950 border border-slate-800 rounded-3xl p-4 relative overflow-hidden shadow-2xl space-y-4">
+        <div class="flex justify-between items-center z-10 relative">
+            <span id="res-badge" class="px-3 py-1 rounded-full font-mono text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-400 border border-rose-500/40">DEFEAT</span>
+            <span id="res-role-label" class="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">SHADOW</span>
+        </div>
+        <div id="res-player-name" class="text-2xl font-black uppercase tracking-wider text-white">GAND_PHAD_DUNGA</div>
+        
+        <div id="res-map" class="w-full h-48 rounded-2xl overflow-hidden border border-slate-800 relative bg-slate-900"></div>
+        
+        <div class="grid grid-cols-2 gap-4 pt-1">
+            <div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distance</div>
+                <div id="res-distance" class="text-2xl font-mono font-black text-emerald-400">0 m</div>
+            </div>
+            <div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time in Match</div>
+                <div id="res-time" class="text-2xl font-mono font-black text-rose-400">00:45</div>
+            </div>
+        </div>
+        
+        <div class="pt-2 border-t border-slate-900 flex items-center justify-between text-[10px] font-mono text-slate-400">
+            <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span><span class="font-bold text-white">SHADOWHUNT</span></div>
+            <span>shadowhunt.fun</span>
+        </div>
+    </div>
+    
+    <p id="res-subtitle" class="text-center text-xs text-slate-400 font-medium">All Shadows were tagged before time ran out.</p>
+    
+    <div id="res-status-card" class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-lg">
+        <div id="res-status-icon-bg" class="w-12 h-12 rounded-xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl font-black">✕</div>
+        <div>
+            <div id="res-status-text" class="font-bold text-rose-400 text-sm">You were tagged</div>
+            <div id="res-status-sub" class="text-xs text-slate-400">Playing as Shadow</div>
+        </div>
+    </div>
+    
+    <div class="space-y-3 pt-2">
+        <div class="flex items-center gap-2 text-xs font-black tracking-wider uppercase text-slate-300 px-1">
+            <span>📊</span> Match Stats
+        </div>
+        
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                <div class="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-slate-300">👥</div>
+                <div id="stat-players" class="text-2xl font-mono font-black text-white">2</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Players</div>
+            </div>
+            
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                <div class="w-8 h-8 rounded-xl bg-emerald-950/50 text-emerald-400 flex items-center justify-center">👁️</div>
+                <div id="stat-survived" class="text-2xl font-mono font-black text-white">0</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Survived</div>
+            </div>
+            
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                <div class="w-8 h-8 rounded-xl bg-rose-950/50 text-rose-400 flex items-center justify-center">🎯</div>
+                <div id="stat-tagged" class="text-2xl font-mono font-black text-white">1</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tagged</div>
+            </div>
+            
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                <div class="w-8 h-8 rounded-xl bg-amber-950/50 text-amber-400 flex items-center justify-center">🛡️</div>
+                <div id="stat-hunters" class="text-2xl font-mono font-black text-white">1</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hunters</div>
+            </div>
+            
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                <div class="w-8 h-8 rounded-xl bg-purple-950/50 text-purple-400 flex items-center justify-center">📡</div>
+                <div id="stat-pulses" class="text-2xl font-mono font-black text-white">0</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pulses</div>
+            </div>
+            
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2">
+                <div class="w-8 h-8 rounded-xl bg-rose-950/50 text-rose-400 flex items-center justify-center">⚡</div>
+                <div id="stat-total-tags" class="text-2xl font-mono font-black text-white">1</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Tags</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="space-y-3 pt-4">
+        <button onclick="location.href='index.html'" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-2xl uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all">
+            <span>🔄</span> Rejoin Lobby
+        </button>
+        <button onclick="location.href='index.html'" class="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-black py-4 rounded-2xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all">
+            <span>🏠</span> Back to Home
+        </button>
+    </div>
+</div>
+</div>
+
+<script>
+let resultsShown = false;
+function showResultsScreen(huntersWon) {
+    if (resultsShown) return;
+    resultsShown = true;
+    
+    const modal = document.getElementById('results-modal');
+    if (!modal) return;
+    
+    const isHunter = assignedRole === 'HUNTER';
+    const playerWon = (huntersWon && isHunter) || (!huntersWon && !isHunter);
+    
+    document.getElementById('res-header-title').textContent = huntersWon ? 'Hunters won.' : 'Shadows won.';
+    
+    const badge = document.getElementById('res-badge');
+    badge.textContent = playerWon ? 'VICTORY' : 'DEFEAT';
+    if (playerWon) {
+        badge.className = 'px-3 py-1 rounded-full font-mono text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-500/40';
+    } else {
+        badge.className = 'px-3 py-1 rounded-full font-mono text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-400 border border-rose-500/40';
+    }
+    
+    document.getElementById('res-role-label').textContent = assignedRole;
+    document.getElementById('res-player-name').textContent = myName;
+    
+    const elapsed = gameStartedAt ? Math.floor((Date.now() - gameStartedAt) / 1000) : 45;
+    document.getElementById('res-time').textContent = formatTime(elapsed);
+    document.getElementById('res-distance').textContent = '0 m';
+    
+    document.getElementById('res-subtitle').textContent = huntersWon ? 'All Shadows were tagged before time ran out.' : 'Shadows successfully survived the match!';
+    
+    const statusIconBg = document.getElementById('res-status-icon-bg');
+    const statusText = document.getElementById('res-status-text');
+    const statusSub = document.getElementById('res-status-sub');
+    
+    const player = latestPlayers && latestPlayers[playerId];
+    const isEliminated = player && player.eliminated;
+    
+    if (isHunter) {
+        statusIconBg.className = 'w-12 h-12 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-black';
+        statusIconBg.textContent = '🛡️';
+        statusText.textContent = playerWon ? 'You won as Hunter' : 'Hunters lost';
+        statusText.className = playerWon ? 'font-bold text-emerald-400 text-sm' : 'font-bold text-rose-400 text-sm';
+        statusSub.textContent = 'Playing as Hunter';
+    } else {
+        if (isEliminated) {
+            statusIconBg.className = 'w-12 h-12 rounded-xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl font-black';
+            statusIconBg.textContent = '✕';
+            statusText.textContent = 'You were tagged';
+            statusText.className = 'font-bold text-rose-400 text-sm';
+            statusSub.textContent = 'Playing as Shadow';
+        } else {
+            statusIconBg.className = 'w-12 h-12 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-black';
+            statusIconBg.textContent = '✓';
+            statusText.textContent = 'You survived';
+            statusText.className = 'font-bold text-emerald-400 text-sm';
+            statusSub.textContent = 'Playing as Shadow';
+        }
+    }
+    
+    let totalPlayers = 0, survivorsCount = 0, taggedCount = 0, huntersCount = 0;
+    if (latestPlayers) {
+        Object.values(latestPlayers).forEach(p => {
+            if (!p) return;
+            totalPlayers++;
+            if (p.assignedRole === 'HUNTER') huntersCount++;
+            if (p.eliminated) taggedCount++;
+            else if (p.assignedRole === 'SHADOW') survivorsCount++;
+        });
+    }
+    
+    document.getElementById('stat-players').textContent = totalPlayers || 2;
+    document.getElementById('stat-survived').textContent = survivorsCount;
+    document.getElementById('stat-tagged').textContent = taggedCount;
+    document.getElementById('stat-hunters').textContent = Math.max(1, huntersCount);
+    document.getElementById('stat-pulses').textContent = '0';
+    document.getElementById('stat-total-tags').textContent = taggedCount;
+    
+    modal.classList.remove('hidden');
+    
+    setTimeout(() => {
+        try {
+            const resMap = L.map('res-map', {zoomControl: false, attributionControl: false}).setView([28.6139, 77.2090], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19}).addTo(resMap);
+            if (lastKnownCoords) {
+                resMap.setView([lastKnownCoords.lat, lastKnownCoords.lng], 16);
+                L.marker([lastKnownCoords.lat, lastKnownCoords.lng]).addTo(resMap);
+            }
+        } catch(e) {}
+    }, 200);
+}
 </script>
 </body>
 </html>
