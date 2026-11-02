@@ -1,267 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ShadowHunt — Game</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ShadowHunt — Game</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
-*{box-sizing:border-box}
-body{margin:0;background:#05030a;color:#fff;font-family:Inter,sans-serif;overflow:hidden}
-.font-mono{font-family:'JetBrains Mono',monospace}
-#map{position:fixed;inset:0;width:100vw;height:100vh;background:#05030a;z-index:0}
-.leaflet-control-zoom{display:none!important}
-.leaflet-control-attribution{background:rgba(5,8,13,.72)!important;color:#cbd5e1!important;font-size:9px!important}
-.leaflet-control-attribution a{color:#fff!important}
-.leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.72) contrast(1.08)}
+*{box-sizing:border-box}body{margin:0;background:#05030a;color:#fff;font-family:Inter,sans-serif;overflow:hidden}.font-mono{font-family:'JetBrains Mono',monospace}
+#map{position:fixed;inset:0;width:100vw;height:100vh;background:#05030a;z-index:0}.leaflet-control-zoom{display:none!important}.leaflet-control-attribution{background:rgba(5,8,13,.72)!important;color:#cbd5e1!important;font-size:9px!important}.leaflet-control-attribution a{color:#fff!important}.leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.72) contrast(1.08)}
+.player-pointer{--pointer-color:#10b981;position:relative;width:28px;height:28px;border:3px solid #fff;border-radius:50%;background:var(--pointer-color);box-shadow:0 0 0 5px rgba(16,185,129,.25),0 0 18px var(--pointer-color)}
+.player-pointer:before{content:'';position:absolute;left:6px;top:-10px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:11px solid var(--pointer-color)}
+.player-pointer.hunter{--pointer-color:#f43f5e}.player-pointer.shadow{--pointer-color:#10b981}
 </style>
 </head>
 <body>
 <div id="map"></div>
-
 <main class="fixed inset-0 z-10 flex flex-col justify-between p-4 pointer-events-none">
-    <header class="w-full max-w-md mx-auto space-y-2">
-        <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-2xl backdrop-blur-md shadow-xl pointer-events-auto">
-            <div class="text-[10px] font-extrabold tracking-widest text-amber-400 uppercase">Match Time</div>
-            <div class="flex justify-between items-center">
-                <span id="match-timer" class="text-3xl font-mono font-black text-amber-300">30:00</span>
-                <span id="zone-txt" class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl font-mono text-xs text-amber-200">ZONE 400m</span>
-            </div>
-        </div>
-
-        <div class="bg-slate-950/90 border border-slate-800 px-4 py-3 rounded-2xl backdrop-blur-md flex justify-between items-center pointer-events-auto">
-            <span id="role-badge" class="px-3 py-1 rounded-lg font-mono text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40">SHADOW</span>
-            <span class="font-mono text-xs font-bold text-slate-300">SHADOWHUNT LIVE</span>
-        </div>
-
-        <div class="bg-slate-950/90 border border-amber-500/40 px-4 py-3 rounded-2xl backdrop-blur-md flex justify-between items-center pointer-events-auto">
-            <span id="status-title" class="font-mono text-xs font-black text-amber-300">RUNNERS SCATTER</span>
-            <span id="headstart-timer" class="font-mono text-xs text-amber-200">02:00</span>
-        </div>
-    </header>
-
-    <div class="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-auto">
-        <button onclick="openChat()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-purple-400">💬</button>
-        <button onclick="centerMap()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-emerald-400">📍</button>
-    </div>
-
-    <footer class="w-full max-w-md mx-auto pointer-events-auto">
-        <div id="tagged-btn-container" class="hidden">
-            <button onclick="openTaggedModal()" class="w-full bg-rose-600 text-white font-black py-4 rounded-2xl uppercase">🏳️ I GOT TAGGED</button>
-        </div>
-    </footer>
+<header class="w-full max-w-md mx-auto space-y-2">
+<div class="bg-slate-950/90 border border-slate-800 p-4 rounded-2xl backdrop-blur-md shadow-xl pointer-events-auto"><div class="text-[10px] font-extrabold tracking-widest text-amber-400 uppercase">Match Time</div><div class="flex justify-between items-center"><span id="match-timer" class="text-3xl font-mono font-black text-amber-300">30:00</span><span id="zone-txt" class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl font-mono text-xs text-amber-200">ZONE 400m</span></div></div>
+<div class="bg-slate-950/90 border border-slate-800 px-4 py-3 rounded-2xl backdrop-blur-md flex justify-between items-center pointer-events-auto"><span id="role-badge" class="px-3 py-1 rounded-lg font-mono text-xs font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40">SHADOW</span><span class="font-mono text-xs font-bold text-slate-300">SHADOWHUNT LIVE</span></div>
+<div class="bg-slate-950/90 border border-amber-500/40 px-4 py-3 rounded-2xl backdrop-blur-md flex justify-between items-center pointer-events-auto"><span id="status-title" class="font-mono text-xs font-black text-amber-300">RUNNERS SCATTER</span><span id="headstart-timer" class="font-mono text-xs text-amber-200">02:00</span></div>
+<div id="gps-status" class="hidden bg-slate-950/80 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[10px] font-mono text-emerald-300 w-fit pointer-events-auto"></div>
+</header>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-auto"><button onclick="openChat()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-purple-400">💬</button><button onclick="centerMap()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-emerald-400">📍</button></div>
+<footer class="w-full max-w-md mx-auto pointer-events-auto"><div id="tagged-btn-container" class="hidden"><button onclick="openTaggedModal()" class="w-full bg-rose-600 text-white font-black py-4 rounded-2xl uppercase">🏳️ I GOT TAGGED</button></div></footer>
 </main>
-
-<div id="tagged-modal" class="fixed inset-0 z-30 bg-black/85 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-950 border border-slate-800 w-full max-w-xs rounded-3xl p-6 text-center space-y-5">
-        <h3 class="font-black text-white">CONFIRM TAGGED STATUS</h3>
-        <p class="text-xs text-slate-400">Were you caught by the Hunter?</p>
-        <div class="grid grid-cols-2 gap-3">
-            <button onclick="confirmTagged(true)" class="bg-rose-600 text-white font-bold py-3 rounded-xl">Yes</button>
-            <button onclick="closeTaggedModal()" class="bg-slate-800 text-white font-bold py-3 rounded-xl">No</button>
-        </div>
-    </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<div id="tagged-modal" class="fixed inset-0 z-30 bg-black/85 flex items-center justify-center p-4 hidden"><div class="bg-slate-950 border border-slate-800 w-full max-w-xs rounded-3xl p-6 text-center space-y-5"><h3 class="font-black text-white">CONFIRM TAGGED STATUS</h3><p class="text-xs text-slate-400">Were you caught by the Hunter?</p><div class="grid grid-cols-2 gap-3"><button onclick="confirmTagged(true)" class="bg-rose-600 text-white font-bold py-3 rounded-xl">Yes</button><button onclick="closeTaggedModal()" class="bg-slate-800 text-white font-bold py-3 rounded-xl">No</button></div></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
-const firebaseConfig = {
-    apiKey: "AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",
-    authDomain: "diluu-d8441.firebaseapp.com",
-    projectId: "diluu-d8441",
-    storageBucket: "diluu-d8441.firebasestorage.app",
-    messagingSenderId: "28253953439",
-    appId: "1:28253953439:web:f1f4266ca95c980ee831aa",
-    measurementId: "G-E1ELEEX02N"
-};
-
+const firebaseConfig={apiKey:'AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk',authDomain:'diluu-d8441.firebaseapp.com',projectId:'diluu-d8441',storageBucket:'diluu-d8441.firebasestorage.app',messagingSenderId:'28253953439',appId:'1:28253953439:web:f1f4266ca95c980ee831aa',measurementId:'G-E1ELEEX02N'};
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const roomCode = new URLSearchParams(location.search).get('code');
-
-if (!roomCode) {
-    document.getElementById('status-title').textContent = 'ROOM CODE MISSING';
-    throw new Error('Open game.html through the room role screen.');
-}
-
-const myName = localStorage.getItem('shadowhunt_codename') || 'AGENT';
-const playerId = myName.replace(/[.#$\/\[\]]/g, '_');
-const roomRef = db.ref('rooms/' + roomCode);
-const playersRef = roomRef.child('players');
-const settingsRef = roomRef.child('settings');
-const gameStatusRef = roomRef.child('gameStatus');
-
-let assignedRole = localStorage.getItem('shadowhunt_assigned_role') || 'SHADOW';
-let currentSettings = { radius: '400 m', headstart: '2 min', matchLength: '30 min' };
-let map, marker, zone, zoneEdge, matchInterval, headstartInterval;
-let gameStartedAt = null;
-let settingsLoaded = false;
-
-map = L.map('map', { zoomControl: false }).setView([28.6139, 77.2090], 16);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    subdomains: 'abc',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-}).addTo(map);
-
-function setZone(center) {
-    const radius = parseInt(currentSettings.radius, 10) || 400;
-    if (!zone) {
-        zone = L.circle(center, {
-            radius, color: '#e7e4eb', weight: 2.5, opacity: .88,
-            dashArray: '10 9', fillColor: '#f5a623', fillOpacity: .035,
-            interactive: false
-        }).addTo(map);
-        zoneEdge = L.circle(center, {
-            radius: radius + 10, color: '#f5a623', weight: 2,
-            opacity: .9, fill: false, interactive: false
-        }).addTo(map);
-    } else {
-        zone.setLatLng(center).setRadius(radius);
-        zoneEdge.setLatLng(center).setRadius(radius + 10);
-    }
-}
-
-if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(position => {
-        const location = [position.coords.latitude, position.coords.longitude];
-        if (!marker) {
-            marker = L.circleMarker(location, {
-                radius: 8, fillColor: '#10b981', color: '#fff',
-                weight: 3, fillOpacity: 1
-            }).addTo(map);
-            map.setView(location, 17);
-        } else {
-            marker.setLatLng(location);
-        }
-        setZone(location);
-    }, error => console.warn('Location unavailable:', error.message), {
-        enableHighAccuracy: true, maximumAge: 5000, timeout: 15000
-    });
-}
-
-playersRef.child(playerId).once('value', snapshot => {
-    const player = snapshot.val();
-    if (player && player.assignedRole && player.assignedRole !== 'PENDING') {
-        assignedRole = player.assignedRole;
-    }
-    localStorage.setItem('shadowhunt_assigned_role', assignedRole);
-
-    const badge = document.getElementById('role-badge');
-    badge.textContent = assignedRole;
-    if (assignedRole === 'HUNTER') {
-        badge.className = 'px-3 py-1 rounded-lg font-mono text-xs font-black bg-rose-950 text-rose-300 border border-rose-500/40';
-        document.getElementById('status-title').textContent = 'HUNTERS LOCKED';
-    }
-});
-
-settingsRef.on('value', snapshot => {
-    const settings = snapshot.val();
-    if (!settings) return;
-
-    currentSettings = settings;
-    settingsLoaded = true;
-    document.getElementById('zone-txt').textContent = 'ZONE ' + currentSettings.radius;
-    if (marker) setZone(marker.getLatLng());
-    syncTimers();
-});
-
-// If an older match has no saved start time, set it once and keep it in Firebase.
-gameStatusRef.transaction(status => {
-    if (!status || !status.started) return;
-    if (!status.startedAt) status.startedAt = Date.now();
-    return status;
-});
-
-gameStatusRef.on('value', snapshot => {
-    const status = snapshot.val();
-    if (!status || !status.started) return;
-    gameStartedAt = status.startedAt || Date.now();
-    syncTimers();
-});
-
-function durationMs(value, fallbackMinutes) {
-    const text = String(value || '');
-    const minuteMatches = [...text.matchAll(/(\d+)\s*(?:min|m)(?!s)/gi)];
-    const secondMatches = [...text.matchAll(/(\d+)\s*s/gi)];
-    let minutes = minuteMatches.reduce((sum, match) => sum + Number(match[1]), 0);
-    const seconds = secondMatches.reduce((sum, match) => sum + Number(match[1]), 0);
-
-    if (!minuteMatches.length && !secondMatches.length) {
-        minutes = Number.parseInt(text, 10) || fallbackMinutes;
-    }
-    return minutes * 60000 + seconds * 1000;
-}
-
-function syncTimers() {
-    if (settingsLoaded && gameStartedAt) {
-        startTimers(currentSettings, gameStartedAt);
-    }
-}
-
-function startTimers(settings, startedAt) {
-    if (matchInterval) clearInterval(matchInterval);
-    if (headstartInterval) clearInterval(headstartInterval);
-
-    const matchDuration = durationMs(settings.matchLength, 30);
-    const headstartDuration = durationMs(settings.headstart, 2);
-
-    function updateTimers() {
-        const elapsed = Math.max(0, Date.now() - startedAt);
-        const matchLeft = Math.max(0, Math.ceil((matchDuration - elapsed) / 1000));
-        const headstartLeft = Math.max(0, Math.ceil((headstartDuration - elapsed) / 1000));
-
-        document.getElementById('match-timer').textContent = formatTime(matchLeft);
-
-        if (headstartLeft > 0) {
-            document.getElementById('headstart-timer').textContent = formatTime(headstartLeft);
-        } else {
-            document.getElementById('status-title').textContent =
-                assignedRole === 'HUNTER' ? 'GO FIND THEM' : 'HUNT ACTIVE';
-            document.getElementById('headstart-timer').textContent = 'ACTIVE';
-
-            if (assignedRole !== 'HUNTER') {
-                document.getElementById('tagged-btn-container').classList.remove('hidden');
-            }
-        }
-
-        if (matchLeft === 0 && headstartLeft === 0) {
-            clearInterval(matchInterval);
-            clearInterval(headstartInterval);
-        }
-    }
-
-    updateTimers();
-    matchInterval = setInterval(updateTimers, 1000);
-    headstartInterval = matchInterval;
-}
-
-function formatTime(seconds) {
-    return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' +
-        String(seconds % 60).padStart(2, '0');
-}
-
-function centerMap() {
-    if (marker) map.setView(marker.getLatLng(), 17);
-}
-function openChat() {
-    alert('Chat feature opening...');
-}
-function openTaggedModal() {
-    document.getElementById('tagged-modal').classList.remove('hidden');
-}
-function closeTaggedModal() {
-    document.getElementById('tagged-modal').classList.add('hidden');
-}
-function confirmTagged(tagged) {
-    closeTaggedModal();
-    if (tagged) alert('Tagged status confirmed!');
-}
-window.addEventListener('resize', () => map.invalidateSize());
+const db=firebase.database();
+const roomCode=new URLSearchParams(location.search).get('code');
+if(!roomCode){document.getElementById('status-title').textContent='ROOM CODE MISSING';throw new Error('Open game.html through the room role screen.');}
+const myName=localStorage.getItem('shadowhunt_codename')||'AGENT';
+const playerId=myName.replace(/[.#$\/\[\]]/g,'_');
+const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),myPlayerRef=playersRef.child(playerId),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus');
+let assignedRole=localStorage.getItem('shadowhunt_assigned_role')||'SHADOW';
+let currentSettings={radius:'400 m',headstart:'2 min',matchLength:'30 min'};
+let map,marker,accuracyCircle,zone,zoneEdge,matchInterval,gameStartedAt=null,settingsLoaded=false;
+const remoteMarkers={},remoteAccuracyCircles={};
+let lastSentLocation=null,lastLocationWriteAt=0,currentHeading=0;
+map=L.map('map',{zoomControl:false}).setView([28.6139,77.2090],16);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,subdomains:'abc',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
+function pointerIcon(role,heading){const type=role==='HUNTER'?'hunter':'shadow';return L.divIcon({className:'',html:'<div class="player-pointer '+type+'" style="transform:rotate('+(Number(heading)||0)+'deg)"></div>',iconSize:[28,28],iconAnchor:[14,14]})}
+function setZone(center){const radius=parseInt(currentSettings.radius,10)||400;if(!zone){zone=L.circle(center,{radius:radius,color:'#e7e4eb',weight:2.5,opacity:.88,dashArray:'10 9',fillColor:'#f5a623',fillOpacity:.035,interactive:false}).addTo(map);zoneEdge=L.circle(center,{radius:radius+10,color:'#f5a623',weight:2,opacity:.9,fill:false,interactive:false}).addTo(map)}else{zone.setLatLng(center).setRadius(radius);zoneEdge.setLatLng(center).setRadius(radius+10)}}
+function distanceMeters(a,b){const rad=n=>n*Math.PI/180;const dLat=rad(b.lat-a.lat),dLng=rad(b.lng-a.lng);const h=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
+function publishLocation(position){const c=position.coords,lat=c.latitude,lng=c.longitude,now=Date.now();const moved=lastSentLocation?distanceMeters(lastSentLocation,{lat:lat,lng:lng}):Infinity;if(lastSentLocation&&moved<2&&now-lastLocationWriteAt<1000)return;const location={lat:lat,lng:lng,accuracy:Number.isFinite(c.accuracy)?c.accuracy:0,heading:Number.isFinite(c.heading)?c.heading:currentHeading,updatedAt:now};if(Number.isFinite(c.speed))location.speed=c.speed;myPlayerRef.child('location').set(location).catch(e=>console.warn('Could not share location:',e));lastSentLocation={lat:lat,lng:lng};lastLocationWriteAt=now}
+function onLocation(position){const c=position.coords,latLng=[c.latitude,c.longitude];if(Number.isFinite(c.heading))currentHeading=c.heading;if(!marker){marker=L.marker(latLng,{icon:pointerIcon(assignedRole,currentHeading),zIndexOffset:1000}).addTo(map);map.setView(latLng,18);accuracyCircle=L.circle(latLng,{radius:c.accuracy||0,color:'#10b981',weight:1,opacity:.4,fillColor:'#10b981',fillOpacity:.08,interactive:false}).addTo(map)}else{marker.setLatLng(latLng);marker.setIcon(pointerIcon(assignedRole,currentHeading));accuracyCircle.setLatLng(latLng).setRadius(c.accuracy||0)}const gps=document.getElementById('gps-status');gps.textContent='GPS ACCURACY ±'+Math.round(c.accuracy||0)+' m';gps.classList.remove('hidden');setZone(latLng);publishLocation(position)}
+if(navigator.geolocation){navigator.geolocation.watchPosition(onLocation,e=>{console.warn('Location unavailable:',e.message);const gps=document.getElementById('gps-status');gps.textContent='LOCATION UNAVAILABLE — CHECK PERMISSION';gps.classList.remove('hidden')},{enableHighAccuracy:true,maximumAge:0,timeout:20000})}else{document.getElementById('gps-status').textContent='THIS DEVICE DOES NOT SUPPORT LOCATION';document.getElementById('gps-status').classList.remove('hidden')}
+function updateRemotePlayers(players){const active=new Set();if(players)Object.entries(players).forEach(([id,p])=>{if(id===playerId||!p||!p.location||!Number.isFinite(p.location.lat)||!Number.isFinite(p.location.lng))return;active.add(id);const role=p.assignedRole==='HUNTER'?'HUNTER':'SHADOW',pos=[p.location.lat,p.location.lng];if(!remoteMarkers[id]){remoteMarkers[id]=L.marker(pos,{icon:pointerIcon(role,p.location.heading),title:p.name||role}).addTo(map);remoteMarkers[id].bindTooltip(p.name||role);remoteAccuracyCircles[id]=L.circle(pos,{radius:p.location.accuracy||0,color:role==='HUNTER'?'#f43f5e':'#10b981',weight:1,opacity:.3,fillOpacity:.04,interactive:false}).addTo(map)}else{remoteMarkers[id].setLatLng(pos).setIcon(pointerIcon(role,p.location.heading));remoteMarkers[id].setTooltipContent(p.name||role);remoteAccuracyCircles[id].setLatLng(pos).setRadius(p.location.accuracy||0)}});Object.keys(remoteMarkers).forEach(id=>{if(!active.has(id)){map.removeLayer(remoteMarkers[id]);delete remoteMarkers[id];if(remoteAccuracyCircles[id]){map.removeLayer(remoteAccuracyCircles[id]);delete remoteAccuracyCircles[id]}}})}
+playersRef.on('value',snapshot=>{const players=snapshot.val();updateRemotePlayers(players);const p=players&&players[playerId];if(p&&p.assignedRole&&p.assignedRole!=='PENDING'){assignedRole=p.assignedRole;localStorage.setItem('shadowhunt_assigned_role',assignedRole);if(marker)marker.setIcon(pointerIcon(assignedRole,currentHeading));const badge=document.getElementById('role-badge');badge.textContent=assignedRole;if(assignedRole==='HUNTER'){badge.className='px-3 py-1 rounded-lg font-mono text-xs font-black bg-rose-950 text-rose-300 border border-rose-500/40';document.getElementById('status-title').textContent='HUNTERS LOCKED'}}});
+settingsRef.on('value',s=>{if(!s.val())return;currentSettings=s.val();settingsLoaded=true;document.getElementById('zone-txt').textContent='ZONE '+currentSettings.radius;if(marker)setZone(marker.getLatLng());syncTimers()});
+gameStatusRef.transaction(status=>{if(!status||!status.started)return;if(!status.startedAt)status.startedAt=Date.now();return status});
+gameStatusRef.on('value',s=>{const status=s.val();if(!status||!status.started)return;gameStartedAt=status.startedAt||Date.now();syncTimers()});
+function durationMs(value,fallback){const text=String(value||''),mm=[...text.matchAll(/(\d+)\s*(?:min|m)(?!s)/gi)],ss=[...text.matchAll(/(\d+)\s*s/gi)];let mins=mm.reduce((n,m)=>n+Number(m[1]),0),secs=ss.reduce((n,m)=>n+Number(m[1]),0);if(!mm.length&&!ss.length)mins=parseInt(text,10)||fallback;return mins*60000+secs*1000}
+function syncTimers(){if(settingsLoaded&&gameStartedAt)startTimers(currentSettings,gameStartedAt)}
+function formatTime(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function startTimers(settings,startedAt){if(matchInterval)clearInterval(matchInterval);const matchDuration=durationMs(settings.matchLength,30),headDuration=durationMs(settings.headstart,2);function update(){const elapsed=Math.max(0,Date.now()-startedAt),matchLeft=Math.max(0,Math.ceil((matchDuration-elapsed)/1000)),headLeft=Math.max(0,Math.ceil((headDuration-elapsed)/1000));document.getElementById('match-timer').textContent=formatTime(matchLeft);if(headLeft>0)document.getElementById('headstart-timer').textContent=formatTime(headLeft);else{document.getElementById('status-title').textContent=assignedRole==='HUNTER'?'GO FIND THEM':'HUNT ACTIVE';document.getElementById('headstart-timer').textContent='ACTIVE';if(assignedRole!=='HUNTER')document.getElementById('tagged-btn-container').classList.remove('hidden')}if(matchLeft===0)clearInterval(matchInterval)}update();matchInterval=setInterval(update,1000)}
+function centerMap(){if(marker)map.setView(marker.getLatLng(),18)}
+function openChat(){alert('Chat feature opening...')}
+function openTaggedModal(){document.getElementById('tagged-modal').classList.remove('hidden')}
+function closeTaggedModal(){document.getElementById('tagged-modal').classList.add('hidden')}
+function confirmTagged(tagged){closeTaggedModal();if(tagged)alert('Tagged status confirmed!')}
+window.addEventListener('resize',()=>map.invalidateSize());
 </script>
 </body>
 </html>
