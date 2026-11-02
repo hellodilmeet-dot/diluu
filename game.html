@@ -51,7 +51,7 @@ const playerId=myName.replace(/[.#$\/\[\]]/g,'_');
 const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),myPlayerRef=playersRef.child(playerId),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus'),zoneStateRef=roomRef.child('zoneState');
 let assignedRole=localStorage.getItem('shadowhunt_assigned_role')||'SHADOW';
 let currentSettings={radius:'400 m',headstart:'2 min',matchLength:'30 min',shrinkInterval:'2 min'};
-let map,marker,accuracyCircle,zone,zoneEdge,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
+let map,marker,accuracyCircle,zone,zoneEdge,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
 const remoteMarkers={},remoteAccuracyCircles={};
 let lastSentLocation=null,lastLocationWriteAt=0,currentHeading=0,compassEnabled=false,lastHeadingWriteAt=0,latestPlayers=null,revealActive=false,knownEliminations=new Set(),playersSnapshotInitialized=false,noticeTimeout=null;
 map=L.map('map',{zoomControl:false}).setView([28.6139,77.2090],16);
@@ -61,8 +61,33 @@ function pointerIcon(role,heading){const type=role==='HUNTER'?'hunter':'shadow';
 function setZone(center){
     const zoneLocation=zoneCenter?[zoneCenter.lat,zoneCenter.lng]:center;
     const radius=activeZoneRadius||parseInt(currentSettings.radius,10)||400;
-    if(!zone){zone=L.circle(zoneLocation,{radius:radius,color:'#e7e4eb',weight:2.5,opacity:.88,dashArray:'10 9',fillColor:'#f5a623',fillOpacity:.035,interactive:false}).addTo(map);zoneEdge=L.circle(zoneLocation,{radius:radius+10,color:'#f5a623',weight:2,opacity:.9,fill:false,interactive:false}).addTo(map)}
-    else{zone.setLatLng(zoneLocation).setRadius(radius);zoneEdge.setLatLng(zoneLocation).setRadius(radius+10)}
+
+    // Current safe zone: solid boundary.
+    if(!zone){
+        zone=L.circle(zoneLocation,{radius:radius,color:'#e7e4eb',weight:2.5,opacity:.95,dashArray:null,fillColor:'#f5a623',fillOpacity:.035,interactive:false}).addTo(map);
+        zoneEdge=L.circle(zoneLocation,{radius:radius+10,color:'#f5a623',weight:2,opacity:.9,fill:false,interactive:false}).addTo(map);
+    }else{
+        zone.setLatLng(zoneLocation).setRadius(radius);
+        zoneEdge.setLatLng(zoneLocation).setRadius(radius+10);
+    }
+
+    // Preview the next zone with a dotted outline. It stays visible before
+    // the shrink begins, then moves with the safe-zone animation.
+    const previewRadius=Math.max(10,Math.round(radius*0.85));
+    if(!nextZonePreview){
+        nextZonePreview=L.circle(zoneLocation,{
+            radius:previewRadius,
+            color:'#22d3ee',
+            weight:3,
+            opacity:.95,
+            dashArray:'2 9',
+            lineCap:'round',
+            fill:false,
+            interactive:false
+        }).addTo(map);
+    }else{
+        nextZonePreview.setLatLng(zoneLocation).setRadius(previewRadius);
+    }
     document.getElementById('zone-txt').textContent='ZONE '+Math.round(radius)+'m';
 }
 function ensureZoneCenter(lat,lng){if(!settingsLoaded||!gameStartedAt)return;
@@ -88,13 +113,31 @@ function checkZoneBoundary(lat,lng){
 }
 function updateZoneShrink(elapsed){
     const intervalMs=durationMs(currentSettings.shrinkInterval||'2 min',2);
+    const shrinkDurationMs=10000; // Every shrink takes exactly 10 seconds.
     const shrinkCount=intervalMs>0?Math.floor(elapsed/intervalMs):0;
+    const shrinkStart=shrinkCount*intervalMs;
     const previousRadius=activeZoneRadius;
-    activeZoneRadius=Math.max(10,Math.round(zoneBaseRadius*Math.pow(.85,shrinkCount)));
+    const startRadius=Math.max(10,Math.round(zoneBaseRadius*Math.pow(0.85,shrinkCount)));
+    const targetRadius=Math.max(10,Math.round(zoneBaseRadius*Math.pow(0.85,shrinkCount+1)));
+    const timeIntoCycle=intervalMs>0?elapsed-shrinkStart:0;
+    const shrinking=shrinkCount>0 && timeIntoCycle<shrinkDurationMs;
+    const shrinkProgress=shrinking?Math.min(1,timeIntoCycle/shrinkDurationMs):0;
+
+    // During the 10-second transition, animate from the old radius to the new one.
+    // Otherwise keep the current safe radius stable until the next shrink.
+    activeZoneRadius=shrinking
+        ? Math.max(10,startRadius+(targetRadius-startRadius)*shrinkProgress)
+        : startRadius;
+
     if(activeZoneRadius!==previousRadius&&lastKnownCoords)checkZoneBoundary(lastKnownCoords.lat,lastKnownCoords.lng);
     if(zoneCenter)setZone([zoneCenter.lat,zoneCenter.lng]);
-    const remaining=intervalMs-(elapsed%intervalMs);
-    document.getElementById('zone-shrink-timer').textContent=elapsed>=durationMs(currentSettings.matchLength,30)?'MATCH END':formatTime(Math.ceil(remaining/1000));
+
+    const nextShrinkAt=(shrinkCount+1)*intervalMs;
+    const remainingMs=Math.max(0,nextShrinkAt-elapsed);
+    document.getElementById('zone-shrink-timer').textContent=
+        elapsed>=durationMs(currentSettings.matchLength,30)
+        ? 'MATCH END'
+        : (shrinking?'SHRINKING '+Math.max(0,Math.ceil((shrinkDurationMs-timeIntoCycle)/1000))+'s':formatTime(Math.ceil(remainingMs/1000)));
 }
 function updateBoundaryWarning(now){
     const player=latestPlayers&&latestPlayers[playerId];
@@ -213,7 +256,7 @@ function startTimers(settings,startedAt){
         updateRemotePlayers(latestPlayers);
         if(matchLeft===0)clearInterval(matchInterval);
     }
-    update();matchInterval=setInterval(update,1000);
+    update();matchInterval=setInterval(update,100);
 }
 function centerMap(){if(marker)map.setView(marker.getLatLng(),18)}
 let chatListenerStarted=false,chatUnreadCount=0,chatNotificationInitialized=false,chatNotificationTimeout=null;
