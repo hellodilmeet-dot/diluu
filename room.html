@@ -28,9 +28,7 @@
             <a href="lobby.html" class="text-slate-400 hover:text-white text-lg font-bold">‹</a>
             <span class="font-bold tracking-wider text-sm text-slate-200">Lobby</span>
             <a href="lobby.html" class="text-rose-400 hover:text-rose-300">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                </svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             </a>
         </header>
 
@@ -160,7 +158,6 @@
             roomCode = '';
             for (let i = 0; i < 4; i++) roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-
         document.getElementById('room-code-txt').innerText = roomCode.toUpperCase();
 
         const myName = localStorage.getItem('shadowhunt_codename') || 'AGENT_' + Math.floor(Math.random() * 100);
@@ -214,7 +211,6 @@
             document.getElementById('rule-hunters').innerText = settings.hunters;
             document.getElementById('rule-headstart').innerText = settings.headstart;
             document.getElementById('rule-match').innerText = settings.matchLength;
-
             document.getElementById('edit-radius').value = settings.radius;
             document.getElementById('edit-hunters').value = settings.hunters;
             document.getElementById('edit-headstart').value = settings.headstart;
@@ -255,7 +251,9 @@
                         updates[id + '/assignedRole'] = index < hunterCount ? 'HUNTER' : 'SHADOW';
                     });
 
-                    playersRef.update(updates).then(() => gameStatusRef.set({ started: true }));
+                    playersRef.update(updates).then(() => {
+                        gameStatusRef.set({ started: true, startedAt: Date.now() });
+                    });
                 });
             });
         }
@@ -331,15 +329,15 @@
             const players = snapshot.val();
             const list = document.getElementById('players-list');
             list.innerHTML = '';
-            let count = 0;
 
+            let count = 0;
             if (players) {
                 Object.values(players).forEach(player => {
                     count++;
                     const initials = player.name ? player.name.substring(0, 2).toUpperCase() : 'AG';
                     const isHost = player.role === 'HOST';
                     const item = document.createElement('div');
-                    item.className = 'flex justify-between items-center bg-slate-950/80 border border-slate-800/60 p-3 rounded-2xl';
+                    item.className = 'flex justify-between items-center bg-slate-950/80 border border-slate-800/60 p-3 rounded-2xl relative';
                     item.innerHTML = `
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center font-mono font-bold text-xs">${initials}</div>
