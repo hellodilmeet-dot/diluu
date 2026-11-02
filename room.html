@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -103,31 +104,38 @@
         </footer>
     </div>
 
-    <div id="host-settings-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div id="host-settings-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
         <div class="bg-slate-950 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-slate-800/80 pb-4">
                 <h3 class="font-black text-white text-lg tracking-wide">Edit Room Settings</h3>
                 <button onclick="closeHostSettings()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
             </div>
             <div class="space-y-4 text-sm">
-                <div><label class="text-xs font-bold text-slate-400">Play Area Radius</label>
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Play Area Radius</label>
                     <select id="edit-radius" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
-                        <option value="200 m">200 m</option><option value="400 m">400 m</option><option value="500 m">500 m</option><option value="1000 m">1000 m</option>
+                        <option value="200 m">200 m</option><option value="400 m">400 m</option>
+                        <option value="500 m">500 m</option><option value="1000 m">1000 m</option>
                     </select>
                 </div>
-                <div><label class="text-xs font-bold text-slate-400">Hunters Count</label>
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Hunters Count</label>
                     <select id="edit-hunters" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
                         <option value="1">1 Hunter</option><option value="2">2 Hunters</option><option value="3">3 Hunters</option>
                     </select>
                 </div>
-                <div><label class="text-xs font-bold text-slate-400">Headstart Duration</label>
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Headstart Duration</label>
                     <select id="edit-headstart" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
-                        <option value="1 min">1 min</option><option value="2 min">2 min</option><option value="3 min">3 min</option><option value="5 min">5 min</option>
+                        <option value="1 min">1 min</option><option value="2 min">2 min</option>
+                        <option value="3 min">3 min</option><option value="5 min">5 min</option>
                     </select>
                 </div>
-                <div><label class="text-xs font-bold text-slate-400">Match Length</label>
+                <div>
+                    <label class="text-xs font-bold text-slate-400">Match Length</label>
                     <select id="edit-match" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
-                        <option value="15 min">15 min</option><option value="30 min">30 min</option><option value="45 min">45 min</option><option value="60 min">60 min</option>
+                        <option value="15 min">15 min</option><option value="30 min">30 min</option>
+                        <option value="45 min">45 min</option><option value="60 min">60 min</option>
                     </select>
                 </div>
             </div>
@@ -195,6 +203,8 @@
         const gameStatusRef = roomRef.child('gameStatus');
 
         let isUserHost = false;
+        let hostResolved = false;
+        let latestPlayersSnapshot = null;
         let countdownInterval = null;
         let hasJoinedBattlefield = false;
         let map = null, myMarker = null, safeZone = null, zoneEdge = null;
@@ -260,8 +270,14 @@
             } else if (data.host === myName) {
                 role = 'HOST';
                 isUserHost = true;
+            } else {
+                isUserHost = false;
             }
+
+            hostResolved = true;
+            if (latestPlayersSnapshot) renderPlayers(latestPlayersSnapshot);
             if (!isUserHost) document.getElementById('action-btn').innerHTML = `<span>📋</span> RULES`;
+
             const playerRef = playersRef.child(playerIdKey);
             playerRef.set({ name: myName, role, assignedRole: 'PENDING', joinedAt: Date.now() });
             playerRef.onDisconnect().remove();
@@ -281,10 +297,10 @@
             document.getElementById('rule-headstart').innerText = s.headstart;
             document.getElementById('rule-match').innerText = s.matchLength;
             document.getElementById('zone-txt').innerText = `ZONE ${s.radius}`;
-            if (document.getElementById('edit-radius')) document.getElementById('edit-radius').value = s.radius;
-            if (document.getElementById('edit-hunters')) document.getElementById('edit-hunters').value = s.hunters;
-            if (document.getElementById('edit-headstart')) document.getElementById('edit-headstart').value = s.headstart;
-            if (document.getElementById('edit-match')) document.getElementById('edit-match').value = s.matchLength;
+            document.getElementById('edit-radius').value = s.radius;
+            document.getElementById('edit-hunters').value = s.hunters;
+            document.getElementById('edit-headstart').value = s.headstart;
+            document.getElementById('edit-match').value = s.matchLength;
         });
 
         function handleActionButton() {
@@ -331,7 +347,7 @@
             setTimeout(() => {
                 playersRef.child(playerIdKey).once('value', pSnap => {
                     const pData = pSnap.val();
-                    assignedRole = pData?.assignedRole || 'SHADOW';
+                    assignedRole = pData && pData.assignedRole ? pData.assignedRole : 'SHADOW';
                     const bodyEl = document.getElementById('page-body');
                     const containerEl = document.getElementById('role-container');
 
@@ -348,7 +364,7 @@
             }, 1500);
         });
 
-        function startBattlefieldTimer() {
+                function startBattlefieldTimer() {
             let timeLeft = 5;
             const timerEl = document.getElementById('timer-count');
             countdownInterval = setInterval(() => {
@@ -365,6 +381,7 @@
             if (hasJoinedBattlefield) return;
             hasJoinedBattlefield = true;
             if (countdownInterval) clearInterval(countdownInterval);
+
             document.getElementById('role-view').classList.add('hidden');
             document.getElementById('game-view').classList.remove('hidden');
 
@@ -389,17 +406,20 @@
         function startLiveGameTimers(settings) {
             if (matchTimerInterval) clearInterval(matchTimerInterval);
             if (headstartTimerInterval) clearInterval(headstartTimerInterval);
+
             let matchSeconds = (parseInt(settings.matchLength, 10) || 30) * 60;
             matchTimerInterval = setInterval(() => {
                 if (matchSeconds > 0) matchSeconds--;
                 const mins = Math.floor(matchSeconds / 60);
                 const secs = matchSeconds % 60;
-                document.getElementById('match-timer').innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                document.getElementById('match-timer').innerText =
+                    `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
             }, 1000);
 
             let headstartSeconds = (parseInt(settings.headstart, 10) || 2) * 60;
             document.getElementById('headstart-timer').innerText =
                 `${String(Math.floor(headstartSeconds / 60)).padStart(2, '0')}:${String(headstartSeconds % 60).padStart(2, '0')}`;
+
             headstartTimerInterval = setInterval(() => {
                 if (headstartSeconds > 0) {
                     headstartSeconds--;
@@ -421,41 +441,58 @@
         function centerMap() {
             if (myMarker && map) map.setView(myMarker.getLatLng(), 17);
         }
-        function openTaggedModal() { document.getElementById('tagged-modal').classList.remove('hidden'); }
-        function closeTaggedModal() { document.getElementById('tagged-modal').classList.add('hidden'); }
+
+        function openTaggedModal() {
+            document.getElementById('tagged-modal').classList.remove('hidden');
+        }
+        function closeTaggedModal() {
+            document.getElementById('tagged-modal').classList.add('hidden');
+        }
         function confirmTagged(status) {
             closeTaggedModal();
-            if (status) alert("Tagged status confirmed!");
+            if (status) alert('Tagged status confirmed!');
         }
-        function openChat() { alert("Chat feature opening..."); }
+        function openChat() {
+            alert('Chat feature opening...');
+        }
 
         playersRef.on('value', snapshot => {
+            latestPlayersSnapshot = snapshot;
+            if (!hostResolved) return;
+            renderPlayers(snapshot);
+        });
+
+        function renderPlayers(snapshot) {
             const players = snapshot.val();
             const listEl = document.getElementById('players-list');
             listEl.innerHTML = '';
+
             let count = 0;
             if (players) {
-                Object.values(players).forEach(p => {
+                Object.values(players).forEach(player => {
                     count++;
-                    const initials = p.name ? p.name.substring(0, 2).toUpperCase() : 'AG';
-                    const isHostBadge = p.role === 'HOST';
+                    const initials = player.name ? player.name.substring(0, 2).toUpperCase() : 'AG';
+                    const isHostBadge = player.role === 'HOST';
                     const item = document.createElement('div');
-                    item.className = "flex justify-between items-center bg-slate-950/80 border border-slate-800/60 p-3 rounded-2xl relative";
+                    item.className = 'flex justify-between items-center bg-slate-950/80 border border-slate-800/60 p-3 rounded-2xl relative';
                     item.innerHTML = `
                         <div class="flex items-center gap-3">
                             <div class="relative w-10 h-10 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center font-mono font-bold text-xs text-slate-300">
                                 ${initials}
                                 ${isHostBadge ? '<span class="absolute -top-1.5 -left-1.5 bg-amber-500 text-black text-[9px] w-4 h-4 rounded-full flex items-center font-black shadow">★</span>' : ''}
                             </div>
-                            <span class="font-bold text-sm text-white tracking-wide">${p.name}</span>
+                            <span class="font-bold text-sm text-white tracking-wide">${player.name}</span>
                         </div>
-                        <span class="text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider ${isHostBadge ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">${p.role}</span>`;
+                        <span class="text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider ${isHostBadge ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">
+                            ${player.role}
+                        </span>`;
                     listEl.appendChild(item);
                 });
             }
 
             document.getElementById('joined-count').innerText = count + ' joined';
             const actionContainer = document.getElementById('bottom-action-container');
+
             if (isUserHost) {
                 actionContainer.innerHTML = count >= 2
                     ? `<button id="start-btn" onclick="triggerStartMission()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white font-extrabold py-4 rounded-2xl text-sm tracking-wider cursor-pointer shadow-xl shadow-rose-950 transition">▶ START MISSION</button>`
@@ -463,16 +500,23 @@
             } else {
                 actionContainer.innerHTML = `<div class="w-full bg-slate-900/90 border border-slate-800 text-slate-400 font-bold py-4 rounded-2xl text-xs tracking-widest text-center uppercase shadow-xl flex items-center justify-center gap-2"><span class="animate-pulse text-purple-400">⏳</span> Waiting for host to start...</div>`;
             }
-        });
+        }
 
         function copyCode() {
             navigator.clipboard.writeText(roomCode);
-            alert("Room code copied: " + roomCode);
+            alert('Room code copied: ' + roomCode);
         }
+
         function shareCode() {
             if (navigator.share) {
-                navigator.share({ title: 'ShadowHunt Mission', text: 'Join my game with code: ' + roomCode, url: window.location.href });
-            } else copyCode();
+                navigator.share({
+                    title: 'ShadowHunt Mission',
+                    text: 'Join my game with code: ' + roomCode,
+                    url: window.location.href
+                });
+            } else {
+                copyCode();
+            }
         }
     </script>
 </body>
