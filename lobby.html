@@ -1,591 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ShadowHunt — Game</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
-*{box-sizing:border-box}body{margin:0;background:#05030a;color:#fff;font-family:Inter,sans-serif;overflow:hidden}.font-mono{font-family:'JetBrains Mono',monospace}
-#map{position:fixed;inset:0;width:100vw;height:100vh;background:#05030a;z-index:0}.leaflet-control-zoom{display:none!important}.leaflet-control-attribution{background:rgba(5,8,13,.72)!important;color:#cbd5e1!important;font-size:9px!important}.leaflet-control-attribution a{color:#fff!important}.leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.72) contrast(1.08)}
-.player-pointer{--pointer-color:#10b981;position:relative;width:28px;height:28px;border:3px solid #fff;border-radius:50%;background:var(--pointer-color);box-shadow:0 0 0 5px rgba(16,185,129,.25),0 0 18px var(--pointer-color)}
-.player-pointer:before{content:'';position:absolute;left:6px;top:-10px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:11px solid var(--pointer-color)}
-.player-pointer.hunter{--pointer-color:#f43f5e}.player-pointer.shadow{--pointer-color:#10b981}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BHUNDHUNT — Lobby</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
 </head>
-<body>
-<div id="map"></div>
-<main class="fixed inset-0 z-10 flex flex-col justify-between p-4 pointer-events-none">
-<header class="w-full max-w-md mx-auto space-y-2">
-<div class="bg-slate-950/90 border border-slate-800 p-4 rounded-2xl backdrop-blur-md shadow-xl pointer-events-auto space-y-2">
-<div class="flex justify-between items-center">
-    <div class="flex items-center gap-2">
-        <span id="role-badge" class="px-2.5 py-1 rounded-lg font-mono text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40">SHADOW</span>
-        <span id="survivor-count" class="font-mono text-[11px] font-bold text-emerald-300">SURVIVORS: 0</span>
-    </div>
-    <span id="zone-txt" class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl font-mono text-xs text-amber-200">ZONE 400m</span>
-</div>
-<div class="flex justify-between items-center pt-1 border-t border-slate-800/80">
-    <div>
-        <div class="text-[9px] font-extrabold tracking-widest text-amber-400 uppercase">Match Time</div>
-        <span id="match-timer" class="text-3xl font-mono font-black text-amber-300">30:00</span>
-    </div>
-    <div id="headstart-container" class="text-right">
-        <div id="status-title" class="font-mono text-[10px] font-black text-amber-300">RUNNERS SCATTER</div>
-        <div id="headstart-timer" class="font-mono text-sm font-bold text-amber-200">02:00</div>
-    </div>
-</div>
-</div>
-<div id="zone-shrink-panel" class="bg-slate-950/90 border border-cyan-500/30 px-3 py-2 rounded-xl backdrop-blur-md flex justify-between items-center pointer-events-auto"><span class="text-[10px] font-bold uppercase text-cyan-300">Next zone shrink (15%)</span><span id="zone-shrink-timer" class="font-mono text-sm font-bold text-white">--:--</span></div>
-<div id="zone-warning" class="hidden bg-rose-950/95 border border-rose-500/60 px-4 py-3 rounded-xl text-sm font-bold text-rose-100 shadow-lg pointer-events-auto"></div>
-<div class="bg-slate-950/90 border border-cyan-500/30 px-3 py-2 rounded-xl backdrop-blur-md hidden grid-cols-2 gap-4 pointer-events-auto"><div><div class="text-[9px] font-bold uppercase tracking-wider text-cyan-300">Next reveal</div><div id="reveal-in" class="font-mono text-sm font-bold text-white">00:45</div></div><div class="text-right"><div class="text-[9px] font-bold uppercase tracking-wider text-emerald-300">Visible for</div><div id="reveal-visible" class="font-mono text-sm font-bold text-white">—</div></div></div>
-<div id="elimination-notice" class="hidden bg-rose-950/95 border border-rose-500/60 px-4 py-3 rounded-xl text-sm font-bold text-rose-100 shadow-lg pointer-events-auto"></div>
-<button id="compass-btn" onclick="enableCompass()" class="hidden" class="bg-slate-950/90 border border-cyan-500/30 px-3 py-1.5 rounded-xl text-[10px] font-mono text-cyan-300 w-fit pointer-events-auto">🧭 ENABLE PHONE DIRECTION</button>
-</header>
-<div class="absolute right-4 top-[68%] -translate-y-1/2 flex flex-col gap-3 pointer-events-auto"><div class="relative"><button onclick="openChat()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-purple-400">💬<span id="chat-unread-badge" class="hidden absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black items-center justify-center">0</span></button><span id="chat-message-popup" class="hidden absolute right-14 top-1/2 -translate-y-1/2 whitespace-nowrap bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-lg">New message</span></div><button onclick="centerMap()" class="w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-emerald-400">📍</button></div>
-<footer class="w-full max-w-md mx-auto pointer-events-auto"><div id="tagged-btn-container" class="hidden"><button onclick="openTaggedModal()" class="w-full bg-rose-600 text-white font-black py-4 rounded-2xl uppercase">🏳️ I GOT TAGGED</button></div></footer>
-</main>
+<body class="min-h-screen flex flex-col justify-between p-4 selection:bg-purple-500 selection:text-white">
 
-<div id="chat-modal" class="fixed inset-0 z-40 bg-black/80 flex items-center justify-center p-3 hidden">
-<section class="w-full max-w-md h-[min(680px,90vh)] bg-slate-950 border border-slate-700 rounded-3xl flex flex-col overflow-hidden shadow-2xl">
-<header class="px-4 py-3 border-b border-slate-800 flex items-center justify-between"><div><h2 class="font-black text-white">PLAYER CHAT</h2><p id="chat-status" class="text-[10px] text-slate-400">Connecting…</p></div><button type="button" onclick="closeChat()" aria-label="Close chat" class="w-10 h-10 rounded-xl bg-slate-900 text-slate-300 text-xl">×</button></header>
-<div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3" aria-live="polite"></div>
-<form id="chat-form" class="p-3 border-t border-slate-800 flex gap-2"><input id="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Write a message…" class="min-w-0 flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white outline-none focus:border-purple-500"><button id="chat-send" type="submit" class="px-4 rounded-xl bg-purple-600 text-white font-bold">Send</button></form>
-</section>
-</div>
-
-<div id="tagged-modal" class="fixed inset-0 z-30 bg-black/85 flex items-center justify-center p-4 hidden"><div class="bg-slate-950 border border-slate-800 w-full max-w-xs rounded-3xl p-6 text-center space-y-5"><h3 class="font-black text-white">CONFIRM TAGGED STATUS</h3><p class="text-xs text-slate-400">Were you caught by the Hunter?</p><div class="grid grid-cols-2 gap-3"><button onclick="confirmTagged(true)" class="bg-rose-600 text-white font-bold py-3 rounded-xl">Yes</button><button onclick="closeTaggedModal()" class="bg-slate-800 text-white font-bold py-3 rounded-xl">No</button></div></div></div>
-
-<div id="results-modal" class="fixed inset-0 z-50 bg-[#05030a] overflow-y-auto p-4 hidden flex flex-col items-center justify-start text-white">
-<div class="w-full max-w-md space-y-5 pb-12 pt-4">
-    <h1 id="res-header-title" class="text-3xl font-black text-center tracking-tight text-white">Hunters won.</h1>
-    <div class="bg-slate-950 border border-slate-800 rounded-3xl p-4 relative overflow-hidden shadow-2xl space-y-4">
-        <div class="flex justify-between items-center z-10 relative">
-            <span id="res-badge" class="px-3 py-1 rounded-full font-mono text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-400 border border-rose-500/40">DEFEAT</span>
-            <span id="res-role-label" class="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">SHADOW</span>
-        </div>
-        <div id="res-player-name" class="text-2xl font-black uppercase tracking-wider text-white">AGENT</div>
-        <div id="res-map" class="w-full h-48 rounded-2xl overflow-hidden border border-slate-800 relative bg-slate-900"></div>
-        <div class="grid grid-cols-2 gap-4 pt-1">
-            <div>
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distance Covered</div>
-                <div id="res-distance" class="text-2xl font-mono font-black text-emerald-400">0 m</div>
+    <!-- Top Header with Profile & Settings Icon -->
+    <header class="max-w-md w-full mx-auto flex justify-between items-center py-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-purple-950 border border-purple-500/30 rounded-2xl flex items-center justify-center font-mono font-bold text-sm text-purple-300" id="user-initials">
+                AG
             </div>
             <div>
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time in Match</div>
-                <div id="res-time" class="text-2xl font-mono font-black text-rose-400">00:45</div>
+                <span id="display-name" class="font-extrabold text-sm text-white block tracking-wide">AGENT</span>
+                <span class="text-[10px] text-slate-400">Online Operative</span>
             </div>
         </div>
-        <div class="pt-2 border-t border-slate-900 flex items-center justify-between text-[10px] font-mono text-slate-400">
-            <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span><span class="font-bold text-white">SHADOWHUNT</span></div>
-            <span>shadowhunt.fun</span>
-        </div>
-    </div>
-    <p id="res-subtitle" class="text-center text-xs text-slate-400 font-medium">All Shadows were tagged before time ran out.</p>
-    <div id="res-status-card" class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-lg">
-        <div id="res-status-icon-bg" class="w-12 h-12 rounded-xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl font-black">✕</div>
-        <div>
-            <div id="res-status-text" class="font-bold text-rose-400 text-sm">You were tagged</div>
-            <div id="res-status-sub" class="text-xs text-slate-400">Playing as Shadow</div>
-        </div>
-    </div>
-    <div class="space-y-3 pt-2">
-        <div class="flex items-center gap-2 text-xs font-black tracking-wider uppercase text-slate-300 px-1"><span>📊</span> Operative Lifetime Stats</div>
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2"><div class="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-slate-300">👥</div><div id="stat-matches-played" class="text-2xl font-mono font-black text-white">3</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matches Played</div></div>
-            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2"><div class="w-8 h-8 rounded-xl bg-emerald-950/50 text-emerald-400 flex items-center justify-center">🏆</div><div id="stat-matches-won" class="text-2xl font-mono font-black text-white">2</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matches Won</div></div>
-            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2"><div class="w-8 h-8 rounded-xl bg-purple-950/50 text-purple-400 flex items-center justify-center">📈</div><div id="stat-win-rate" class="text-2xl font-mono font-black text-white">67%</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Win Rate</div></div>
-            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2"><div class="w-8 h-8 rounded-xl bg-amber-950/50 text-amber-400 flex items-center justify-center">🎯</div><div id="stat-hunter-tags" class="text-2xl font-mono font-black text-white">1</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hunter Tags</div></div>
-            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2"><div class="w-8 h-8 rounded-xl bg-blue-950/50 text-blue-400 flex items-center justify-center">🏃‍♂️</div><div id="stat-shadow-escapes" class="text-2xl font-mono font-black text-white">1</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Shadow Escapes</div></div>
-            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 space-y-2"><div class="w-8 h-8 rounded-xl bg-rose-950/50 text-rose-400 flex items-center justify-center">⚡</div><div id="stat-career-score" class="text-2xl font-mono font-black text-purple-400">130</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Career Score</div></div>
-        </div>
-    </div>
-    <div class="space-y-3 pt-4">
-        <button onclick="location.href='index.html'" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-2xl uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all"><span>🔄</span> Rejoin Lobby</button>
-        <button onclick="location.href='index.html'" class="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-black py-4 rounded-2xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all"><span>🏠</span> Back to Home</button>
-    </div>
-</div>
-</div>
+        <!-- Settings / Operative File Icon -->
+        <button onclick="openSettingsModal()" class="w-10 h-10 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer shadow-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+    </header>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-<script>
-const firebaseConfig={apiKey:'AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk',authDomain:'diluu-d8441.firebaseapp.com',projectId:'diluu-d8441',storageBucket:'diluu-d8441.firebasestorage.app',messagingSenderId:'28253953439',appId:'1:28253953439:web:f1f4266ca95c980ee831aa',measurementId:'G-E1ELEEX02N'};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
-const roomCode=new URLSearchParams(location.search).get('code');
-if(!roomCode){document.getElementById('status-title').textContent='ROOM CODE MISSING';throw new Error('Open game.html through the room role screen.');}
-const myName=localStorage.getItem('shadowhunt_codename')||'AGENT';
-const playerId=myName.replace(/[.#$\/\[\]]/g,'_');
-const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),myPlayerRef=playersRef.child(playerId),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus'),zoneStateRef=roomRef.child('zoneState');
-let assignedRole=localStorage.getItem('shadowhunt_assigned_role')||'SHADOW';
-let currentSettings={radius:'400 m',headstart:'2 min',matchLength:'30 min',shrinkInterval:'2 min'};
-let map,marker,zone,nextZonePreview,matchInterval,gameStartedAt=null,settingsLoaded=false,zoneCenter=null,zoneBaseRadius=0,activeZoneRadius=0,lastKnownCoords=null,eliminationSubmitted=false;
-let totalDistanceCovered = 0; // Tracking distance
-const remoteMarkers={},remoteAccuracyCircles={};
-let lastSentLocation=null,lastLocationWriteAt=0,currentHeading=0,compassEnabled=false,lastHeadingWriteAt=0,latestPlayers=null,revealActive=false,knownEliminations=new Set(),playersSnapshotInitialized=false,noticeTimeout=null;
+    <!-- Main Lobby Hub -->
+    <main class="max-w-md w-full mx-auto space-y-4 my-auto w-full py-6">
+        
+        <!-- Host Game Card -->
+        <a href="host.html" class="block bg-gradient-to-r from-purple-950/60 to-slate-900 border border-purple-500/30 p-6 rounded-3xl hover:border-purple-500/60 transition shadow-xl group">
+            <div class="flex justify-between items-center">
+                <div class="space-y-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">Command</span>
+                    <h2 class="text-xl font-black text-white tracking-wide">Host a Game</h2>
+                    <p class="text-xs text-slate-400">Create a secure zone, set radius and rules.</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-600/20 border border-purple-500/40 rounded-2xl flex items-center justify-center text-purple-300 text-lg group-hover:scale-105 transition">
+                    Host
+                </div>
+            </div>
+        </a>
 
-map=L.map('map',{zoomControl:false, minZoom: 15, maxZoom: 19}).setView([28.6139,77.2090],17);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,subdomains:'abc',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
+        <!-- Join Game Card -->
+        <a href="join.html" class="block bg-slate-900/90 border border-slate-800/80 p-6 rounded-3xl hover:border-slate-700 transition shadow-xl group">
+            <div class="flex justify-between items-center">
+                <div class="space-y-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Infiltration</span>
+                    <h2 class="text-xl font-black text-white tracking-wide">Join a Game</h2>
+                    <p class="text-xs text-slate-400">Enter a 4-digit room code to infiltrate.</p>
+                </div>
+                <div class="w-12 h-12 bg-slate-800 border border-slate-700 rounded-2xl flex items-center justify-center text-slate-300 text-lg group-hover:scale-105 transition">
+                    Join
+                </div>
+            </div>
+        </a>
 
-function pointerIcon(role,heading){const type=role==='HUNTER'?'hunter':'shadow';return L.divIcon({className:'',html:'<div class="player-pointer '+type+'" style="transform:rotate('+(Number(heading)||0)+'deg)"></div>',iconSize:[28,28],iconAnchor:[14,14]})}
+    </main>
 
-function setZone(center, showPreview = true){
-    const baseCenter = zoneCenter ? [zoneCenter.lat, zoneCenter.lng] : center;
-    const radius = activeZoneRadius || parseInt(currentSettings.radius, 10) || 400;
+    <!-- Footer Status -->
+    <footer class="max-w-md w-full mx-auto text-center py-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-600">
+        BHUNDHUNT Tactical · Secure Protocol
+    </footer>
 
-    if(!zone){
-        zone = L.circle(baseCenter, {radius: radius, color: '#f5a623', weight: 2.5, opacity: .95, fillColor: '#f5a623', fillOpacity: .035, interactive: false}).addTo(map);
-    } else {
-        zone.setLatLng(baseCenter).setRadius(radius);
-    }
-
-    const previewRadius = Math.max(10, Math.round(radius * 0.85));
-    if(showPreview){
-        if(!nextZonePreview){
-            nextZonePreview = L.circle(baseCenter, {radius: previewRadius, color: '#22d3ee', weight: 3, opacity: .95, dashArray: '2 9', lineCap: 'round', fill: false, interactive: false}).addTo(map);
-        } else {
-            if(!map.hasLayer(nextZonePreview)) nextZonePreview.addTo(map);
-            nextZonePreview.setLatLng(baseCenter).setRadius(previewRadius);
-        }
-    } else {
-        if(nextZonePreview && map.hasLayer(nextZonePreview)){
-            map.removeLayer(nextZonePreview);
-        }
-    }
-    document.getElementById('zone-txt').textContent = 'ZONE ' + Math.round(radius) + 'm';
-}
-
-function ensureZoneCenter(lat, lng){
-    if(!settingsLoaded || !gameStartedAt) return;
-    zoneStateRef.transaction(state => {
-        if(state && state.center) return state;
-        return {center: {lat: lat, lng: lng}, baseRadius: parseInt(currentSettings.radius, 10) || 400};
-    }, (error, committed, snapshot) => {
-        if(error) return;
-        const state = snapshot.val();
-        if(state && state.center){
-            zoneCenter = state.center;
-            zoneBaseRadius = Number(state.baseRadius) || parseInt(currentSettings.radius, 10) || 400;
-            activeZoneRadius = zoneBaseRadius;
+    <!-- OPERATIVE FILE / SETTINGS MODAL (Matching your screenshot) -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+        <div class="bg-slate-950 border border-slate-800/80 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-6 shadow-2xl">
             
-            const maxOffsetDeg = (zoneBaseRadius * 2) / 111320;
-            const southWest = L.latLng(zoneCenter.lat - maxOffsetDeg, zoneCenter.lng - maxOffsetDeg);
-            const northEast = L.latLng(zoneCenter.lat + maxOffsetDeg, zoneCenter.lng + maxOffsetDeg);
-            map.setMaxBounds(L.latLngBounds(southWest, northEast));
-            map.setView([zoneCenter.lat, zoneCenter.lng], 17);
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center border-b border-slate-900 pb-4">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Operative File</span>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
+            </div>
 
-            setZone([lat, lng]);
-            if(lastKnownCoords) checkZoneBoundary(lastKnownCoords.lat, lastKnownCoords.lng);
+            <!-- Profile Overview -->
+            <div class="text-center space-y-1">
+                <h2 id="modal-username" class="text-xl font-black text-white tracking-wider uppercase">AGENT</h2>
+                <p id="modal-email" class="text-xs text-slate-400 font-mono">hello.dilmeet@gmail.com</p>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest pt-1">Operative Since Oct 2026</p>
+            </div>
+
+            <!-- Career Score Card -->
+            <div class="bg-slate-900/80 border border-slate-800/60 p-5 rounded-2xl text-center space-y-1">
+                <div class="text-3xl font-mono font-black text-purple-400 tracking-wider">130</div>
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Career Score</div>
+            </div>
+
+            <!-- Lifetime Stats Grid (2x3) -->
+            <div class="space-y-2">
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-1">Lifetime Stats</div>
+                <div class="grid grid-cols-2 gap-3 text-left">
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">3</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Matches Played</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">2</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Matches Won</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">67%</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Win Rate</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">1</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Hunter Tags</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">1</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Shadow Escapes</div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-800/60 p-4 rounded-2xl space-y-1">
+                        <div class="text-lg font-mono font-bold text-white">482 m</div>
+                        <div class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Distance Covered</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Management Section -->
+            <div class="space-y-2 pt-2">
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-1">Account</div>
+                <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 text-sm font-bold">
+                    
+                    <!-- Change Codename Option -->
+                    <button onclick="changeCodename()" class="w-full flex justify-between items-center p-4 hover:bg-slate-800/50 transition cursor-pointer">
+                        <div class="flex items-center gap-3 text-slate-200">
+                            <span>✏️</span> Change Codename
+                        </div>
+                        <span class="text-slate-500">›</span>
+                    </button>
+
+                    <!-- Safety & Legal -->
+                    <div class="flex justify-between items-center p-4 text-slate-200">
+                        <div class="flex items-center gap-3">
+                            <span>🛡️</span> Safety & Legal
+                        </div>
+                        <span class="text-slate-500">›</span>
+                    </div>
+
+                    <!-- Sign Out / Logout Option -->
+                    <button onclick="signOut()" class="w-full flex justify-between items-center p-4 hover:bg-rose-950/20 text-rose-400 transition cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <span>🚪</span> Sign Out
+                        </div>
+                        <span class="text-rose-500">›</span>
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- Footer brand inside modal -->
+            <div class="text-center pt-2 pb-1 text-[9px] font-extrabold uppercase tracking-widest text-slate-600">
+                BHUNDHUNT Tactical · Honour Protocol
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Load Saved User Profile
+        const currentName = localStorage.getItem('shadowhunt_codename') || 'AGENT';
+        document.getElementById('display-name').innerText = currentName;
+        document.getElementById('modal-username').innerText = currentName;
+        document.getElementById('user-initials').innerText = currentName.substring(0, 2).toUpperCase();
+
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
         }
-    });
-}
 
-function checkZoneBoundary(lat, lng){
-    if(!zoneCenter || !gameStartedAt || eliminationSubmitted) return;
-    const dist = distanceMeters({lat: lat, lng: lng}, zoneCenter);
-    if(dist <= activeZoneRadius){
-        myPlayerRef.child('outsideSince').remove().catch(()=>{});
-        document.getElementById('zone-warning').classList.add('hidden');
-        return;
-    }
-    myPlayerRef.child('outsideSince').transaction(value => value || Date.now());
-}
-
-function updateZoneShrink(elapsed){
-    const intervalMs = durationMs(currentSettings.shrinkInterval || '2 min', 2);
-    const shrinkDurationMs = 10000;
-    const shrinkCount = intervalMs > 0 ? Math.floor(elapsed / intervalMs) : 0;
-    const shrinkStart = shrinkCount * intervalMs;
-    const previousRadius = activeZoneRadius;
-    
-    const startRadius = Math.max(10, Math.round(zoneBaseRadius * Math.pow(0.85, shrinkCount)));
-    const targetRadius = Math.max(10, Math.round(zoneBaseRadius * Math.pow(0.85, shrinkCount + 1)));
-    const timeIntoCycle = intervalMs > 0 ? elapsed - shrinkStart : 0;
-    const shrinking = shrinkCount > 0 && timeIntoCycle < shrinkDurationMs;
-    const shrinkProgress = shrinking ? Math.min(1, timeIntoCycle / shrinkDurationMs) : 0;
-
-    if(shrinking && timeIntoCycle < 500 && zoneCenter){
-        const maxOffsetMeters = Math.max(5, startRadius - targetRadius);
-        const randomAngle = Math.random() * 2 * Math.PI;
-        const randomDist = Math.random() * (maxOffsetMeters * 0.5);
-        const dLat = (randomDist * Math.cos(randomAngle)) / 111320;
-        const dLng = (randomDist * Math.sin(randomAngle)) / (111320 * Math.cos(zoneCenter.lat * Math.PI / 180));
-        zoneCenter = {lat: zoneCenter.lat + dLat, lng: zoneCenter.lng + dLng};
-    }
-
-    activeZoneRadius = shrinking
-        ? Math.max(10, startRadius + (targetRadius - startRadius) * shrinkProgress)
-        : startRadius;
-
-    if(activeZoneRadius !== previousRadius && lastKnownCoords) checkZoneBoundary(lastKnownCoords.lat, lastKnownCoords.lng);
-    if(zoneCenter) setZone([zoneCenter.lat, zoneCenter.lng], !shrinking);
-
-    const nextShrinkAt = (shrinkCount + 1) * intervalMs;
-    const remainingMs = Math.max(0, nextShrinkAt - elapsed);
-    document.getElementById('zone-shrink-timer').textContent =
-        elapsed >= durationMs(currentSettings.matchLength, 30)
-        ? 'MATCH END'
-        : (shrinking ? 'SHRINKING ' + Math.max(0, Math.ceil((shrinkDurationMs - timeIntoCycle) / 1000)) + 's' : formatTime(Math.ceil(remainingMs / 1000)));
-}
-
-function updateBoundaryWarning(now){
-    const player = latestPlayers && latestPlayers[playerId];
-    const warning = document.getElementById('zone-warning');
-    if(!player || !player.outsideSince || player.eliminated){warning.classList.add('hidden'); return;}
-    const secondsLeft = Math.max(0, 30 - Math.floor((now - player.outsideSince) / 1000));
-    warning.textContent = 'OUTSIDE SAFE ZONE — RETURN IN ' + secondsLeft + 's OR YOU WILL BE ELIMINATED';
-    warning.classList.remove('hidden');
-    if(secondsLeft === 0 && !eliminationSubmitted){
-        eliminationSubmitted = true;
-        myPlayerRef.update({eliminated: true, eliminatedAt: now, outsideSince: null}).catch(()=>{ eliminationSubmitted = false; });
-    }
-}
-
-function distanceMeters(a, b){
-    const rad = n => n * Math.PI / 180;
-    const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
-    const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng/2)**2;
-    return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
-}
-
-function publishLocation(position){
-    const c = position.coords, lat = c.latitude, lng = c.longitude, now = Date.now();
-    const moved = lastSentLocation ? distanceMeters(lastSentLocation, {lat: lat, lng: lng}) : Infinity;
-    if(lastSentLocation && moved < 2 && now - lastLocationWriteAt < 1000) return;
-    if(lastSentLocation && moved < 500) { // filter out GPS jumps
-        totalDistanceCovered += moved;
-    }
-    const location = {lat: lat, lng: lng, accuracy: Number.isFinite(c.accuracy) ? c.accuracy : 0, heading: Number.isFinite(c.heading) ? c.heading : currentHeading, updatedAt: now};
-    myPlayerRef.child('location').set(location).catch(()=>{});
-    lastSentLocation = {lat: lat, lng: lng, heading: currentHeading};
-    lastLocationWriteAt = now;
-}
-
-function setPhoneHeading(heading){
-    currentHeading = ((heading % 360) + 360) % 360;
-    if(marker) marker.setIcon(pointerIcon(assignedRole, currentHeading));
-    const now = Date.now();
-    if(lastSentLocation && (Math.abs(currentHeading - (lastSentLocation.heading || 0)) > 3 || now - lastHeadingWriteAt > 1000)){
-        myPlayerRef.child('location').update({heading: currentHeading, updatedAt: now}).catch(()=>{});
-        lastSentLocation.heading = currentHeading;
-        lastHeadingWriteAt = now;
-    }
-}
-
-function onDeviceOrientation(event){
-    let heading;
-    if(Number.isFinite(event.webkitCompassHeading)) heading = event.webkitCompassHeading;
-    else if(Number.isFinite(event.alpha)){
-        const screenAngle = (screen.orientation && Number.isFinite(screen.orientation.angle) ? screen.orientation.angle : (Number.isFinite(window.orientation) ? window.orientation : 0));
-        heading = 360 - event.alpha - screenAngle;
-    } else return;
-    setPhoneHeading(heading);
-}
-
-async function enableCompass(){
-    try{
-        if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-            await DeviceOrientationEvent.requestPermission();
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
         }
-        compassEnabled = true;
-        if('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onDeviceOrientation, true);
-        else window.addEventListener('deviceorientation', onDeviceOrientation, true);
-    }catch(e){}
-}
 
-function onLocation(position){
-    const c = position.coords, latLng = [c.latitude, c.longitude];
-    if(!compassEnabled && Number.isFinite(c.heading)) currentHeading = c.heading;
-    if(!marker){
-        marker = L.marker(latLng, {icon: pointerIcon(assignedRole, currentHeading), zIndexOffset: 1000}).addTo(map);
-        map.setView(latLng, 18);
-    } else {
-        marker.setLatLng(latLng);
-        marker.setIcon(pointerIcon(assignedRole, currentHeading));
-    }
-    lastKnownCoords = {lat: c.latitude, lng: c.longitude};
-    if(!zoneCenter) ensureZoneCenter(c.latitude, c.longitude);
-    checkZoneBoundary(c.latitude, c.longitude);
-    publishLocation(position);
-}
-
-if(navigator.geolocation){
-    navigator.geolocation.watchPosition(onLocation, ()=>{}, {enableHighAccuracy: true, maximumAge: 0, timeout: 20000});
-}
-
-function updateRemotePlayers(players){
-    latestPlayers = players;
-    const active = new Set();
-    if(players && revealActive){
-        Object.entries(players).forEach(([id, p]) => {
-            if(id === playerId || !p || p.eliminated || !p.location || !Number.isFinite(p.location.lat) || !Number.isFinite(p.location.lng)) return;
-            const isTarget = assignedRole === 'HUNTER' ? p.assignedRole === 'SHADOW' : p.assignedRole === 'HUNTER';
-            if(!isTarget) return;
-            active.add(id);
-            const role = p.assignedRole === 'HUNTER' ? 'HUNTER' : 'SHADOW', pos = [p.location.lat, p.location.lng];
-            if(!remoteMarkers[id]){
-                remoteMarkers[id] = L.marker(pos, {icon: pointerIcon(role, p.location.heading), title: p.name || role}).addTo(map);
-                remoteMarkers[id].bindTooltip(p.name || role);
-                remoteAccuracyCircles[id] = L.circle(pos, {radius: p.location.accuracy || 0, color: role === 'HUNTER' ? '#f43f5e' : '#10b981', weight: 1, opacity: .3, fillOpacity: .04, interactive: false}).addTo(map);
-            } else {
-                remoteMarkers[id].setLatLng(pos).setIcon(pointerIcon(role, p.location.heading));
-                remoteMarkers[id].setTooltipContent(p.name || role);
-                remoteAccuracyCircles[id].setLatLng(pos).setRadius(p.location.accuracy || 0);
-            }
-        });
-    }
-    Object.keys(remoteMarkers).forEach(id => {
-        if(!active.has(id)){
-            map.removeLayer(remoteMarkers[id]);
-            delete remoteMarkers[id];
-            if(remoteAccuracyCircles[id]){ map.removeLayer(remoteAccuracyCircles[id]); delete remoteAccuracyCircles[id]; }
-        }
-    });
-}
-
-playersRef.on('value', snapshot => {
-    const players = snapshot.val() || {}, eliminatedNow = new Set();
-    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0;
-    Object.entries(players).forEach(([id, p]) => {
-        if(!p) return;
-        if(p.assignedRole === 'SHADOW'){
-            totalShadows++;
-            if(!p.eliminated) survivorCount++;
-            else eliminatedShadows++;
-        }
-        if(p.eliminated){
-            eliminatedNow.add(id);
-            if(playersSnapshotInitialized && !knownEliminations.has(id)){
-                const notice = document.getElementById('elimination-notice');
-                notice.textContent = (p.name || 'A player') + ' was eliminated';
-                notice.classList.remove('hidden');
-                if(noticeTimeout) clearTimeout(noticeTimeout);
-                noticeTimeout = setTimeout(() => notice.classList.add('hidden'), 5000);
+        // Change Codename Functionality
+        function changeCodename() {
+            const newName = prompt("Enter new operative codename:", currentName);
+            if (newName && newName.trim() !== "") {
+                const formatted = newName.trim().toUpperCase();
+                localStorage.setItem('shadowhunt_codename', formatted);
+                document.getElementById('display-name').innerText = formatted;
+                document.getElementById('modal-username').innerText = formatted;
+                document.getElementById('user-initials').innerText = formatted.substring(0, 2).toUpperCase();
+                alert("Codename updated successfully to: " + formatted);
             }
         }
-    });
-    
-    if(totalShadows > 0 && eliminatedShadows === totalShadows && playersSnapshotInitialized) {
-        showResultsScreen(true);
-    }
-    knownEliminations = eliminatedNow; playersSnapshotInitialized = true;
-    document.getElementById('survivor-count').textContent = 'SURVIVORS: ' + survivorCount;
-    latestPlayers = players; updateRemotePlayers(players);
-    const p = players[playerId];
-    if(p && p.assignedRole && p.assignedRole !== 'PENDING'){
-        assignedRole = p.assignedRole; localStorage.setItem('shadowhunt_assigned_role', assignedRole);
-        if(marker) marker.setIcon(pointerIcon(assignedRole, currentHeading));
-        const badge = document.getElementById('role-badge'); badge.textContent = assignedRole;
-        if(assignedRole === 'HUNTER'){
-            badge.className = 'px-3 py-1 rounded-lg font-mono text-xs font-black bg-rose-950 text-rose-300 border border-rose-500/40';
-            document.getElementById('status-title').textContent = 'HUNTERS LOCKED';
+
+        // Sign Out / Logout Functionality
+        function signOut() {
+            if (confirm("Are you sure you want to sign out?")) {
+                localStorage.removeItem('shadowhunt_codename');
+                sessionStorage.clear();
+                window.location.href = 'auth.html'; // Redirect to login page
+            }
         }
-    }
-});
-
-settingsRef.on('value', s => {
-    if(!s.val()) return;
-    currentSettings = s.val(); if(!currentSettings.shrinkInterval) currentSettings.shrinkInterval = '2 min';
-    settingsLoaded = true; if(!zoneCenter) zoneBaseRadius = parseInt(currentSettings.radius, 10) || 400;
-    if(marker) setZone(marker.getLatLng()); syncTimers();
-});
-
-zoneStateRef.on('value', s => {
-    const state = s.val(); if(!state || !state.center) return;
-    zoneCenter = state.center; zoneBaseRadius = Number(state.baseRadius) || parseInt(currentSettings.radius, 10) || 400;
-    if(gameStartedAt) updateZoneShrink(Math.max(0, Date.now() - gameStartedAt));
-    if(marker) setZone(marker.getLatLng());
-    if(lastKnownCoords) checkZoneBoundary(lastKnownCoords.lat, lastKnownCoords.lng);
-});
-
-gameStatusRef.transaction(status => {
-    if(!status || !status.started) return;
-    if(!status.startedAt) status.startedAt = Date.now();
-    return status;
-});
-
-gameStatusRef.on('value', s => {
-    const status = s.val(); if(!status || !status.started) return;
-    gameStartedAt = status.startedAt || Date.now(); syncTimers();
-});
-
-function durationMs(value, fallback){
-    const text = String(value || ''), mm = [...text.matchAll(/(\d+)\s*(?:min|m)(?!s)/gi)], ss = [...text.matchAll(/(\d+)\s*s/gi)];
-    let mins = mm.reduce((n, m) => n + Number(m[1]), 0), secs = ss.reduce((n, m) => n + Number(m[1]), 0);
-    if(!mm.length && !ss.length) mins = parseInt(text, 10) || fallback;
-    return mins * 60000 + secs * 1000;
-}
-
-function syncTimers(){
-    if(settingsLoaded && gameStartedAt){
-        startTimers(currentSettings, gameStartedAt);
-        if(lastKnownCoords && !zoneCenter) ensureZoneCenter(lastKnownCoords.lat, lastKnownCoords.lng);
-    }
-}
-
-function formatTime(s){ return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
-
-function startTimers(settings, startedAt){
-    if(matchInterval) clearInterval(matchInterval);
-    const matchDuration = durationMs(settings.matchLength, 30), headDuration = durationMs(settings.headstart, 2);
-    const revealEvery = 45000, revealLength = 10000;
-    function update(){
-        const now = Date.now(), elapsed = Math.max(0, now - startedAt), matchLeft = Math.max(0, Math.ceil((matchDuration - elapsed) / 1000)), headLeft = Math.max(0, Math.ceil((headDuration - elapsed) / 1000));
-        const cyclePosition = elapsed % revealEvery, inReveal = elapsed >= revealEvery && cyclePosition < revealLength;
-        const nextRevealAt = startedAt + (Math.floor(elapsed / revealEvery) + 1) * revealEvery, revealIn = Math.max(0, Math.ceil((nextRevealAt - now) / 1000));
-        const visibleFor = inReveal ? Math.max(0, Math.ceil((revealLength - cyclePosition) / 1000)) : 0;
-        
-        document.getElementById('match-timer').textContent = formatTime(matchLeft);
-        revealActive = inReveal; updateZoneShrink(elapsed); updateBoundaryWarning(now);
-        
-        if(headLeft > 0){
-            document.getElementById('status-title').textContent = 'RUNNERS SCATTER';
-            document.getElementById('headstart-timer').textContent = formatTime(headLeft);
-        } else {
-            document.getElementById('status-title').textContent = 'NEXT REVEAL';
-            document.getElementById('headstart-timer').textContent = inReveal ? 'NOW' : formatTime(revealIn);
-            if(assignedRole !== 'HUNTER') document.getElementById('tagged-btn-container').classList.remove('hidden');
-        }
-        document.getElementById('reveal-in').textContent = inReveal ? 'NOW' : formatTime(revealIn);
-        document.getElementById('reveal-visible').textContent = inReveal ? formatTime(visibleFor) : '—';
-        updateRemotePlayers(latestPlayers);
-        
-        if(matchLeft === 0 || (latestPlayers && Object.values(latestPlayers).some(p => p && p.assignedRole === 'SHADOW') && Object.values(latestPlayers).filter(p => p && p.assignedRole === 'SHADOW').every(p => p.eliminated))) {
-            clearInterval(matchInterval);
-            const huntersWon = latestPlayers && Object.values(latestPlayers).filter(p => p && p.assignedRole === 'SHADOW').every(p => p.eliminated);
-            showResultsScreen(huntersWon);
-        }
-    }
-    update(); matchInterval = setInterval(update, 100);
-}
-
-function centerMap(){ if(marker) map.setView(marker.getLatLng(), 18); }
-
-let chatListenerStarted = false, chatUnreadCount = 0, chatNotificationInitialized = false, chatNotificationTimeout = null;
-const knownChatMessageIds = new Set();
-function startChatNotifications(){
-    roomRef.child('chatMessages').on('value', snapshot => {
-        const fresh = [];
-        snapshot.forEach(child => { const message = child.val(); if(message && message.playerId !== playerId && !knownChatMessageIds.has(child.key)) fresh.push({id: child.key, message: message}); });
-        if(!chatNotificationInitialized){ snapshot.forEach(child => knownChatMessageIds.add(child.key)); chatNotificationInitialized = true; return; }
-        snapshot.forEach(child => knownChatMessageIds.add(child.key));
-        if(document.getElementById('chat-modal').classList.contains('hidden') && fresh.length){
-            chatUnreadCount += fresh.length;
-            const badge = document.getElementById('chat-unread-badge'); badge.textContent = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount); badge.classList.remove('hidden'); badge.classList.add('flex');
-            const popup = document.getElementById('chat-message-popup'); popup.textContent = fresh.length === 1 ? 'New message from ' + (fresh[0].message.name || 'player') : fresh.length + ' new messages'; popup.classList.remove('hidden');
-            if(chatNotificationTimeout) clearTimeout(chatNotificationTimeout); chatNotificationTimeout = setTimeout(() => popup.classList.add('hidden'), 5000);
-        }
-    });
-}
-
-function openChat(){
-    const modal = document.getElementById('chat-modal'); modal.classList.remove('hidden'); chatUnreadCount = 0;
-    document.getElementById('chat-unread-badge').classList.add('hidden'); document.getElementById('chat-unread-badge').classList.remove('flex'); document.getElementById('chat-message-popup').classList.add('hidden'); document.getElementById('chat-input').focus();
-    if(chatListenerStarted) return; chatListenerStarted = true;
-    roomRef.child('chatMessages').orderByChild('sentAt').limitToLast(100).on('value', snapshot => {
-        const list = document.getElementById('chat-messages'), wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80; list.replaceChildren();
-        snapshot.forEach(child => {
-            const message = child.val(); if(!message || typeof message.text !== 'string') return;
-            const row = document.createElement('div'); row.className = 'max-w-[90%] ' + (message.playerId === playerId ? 'ml-auto' : 'mr-auto');
-            const name = document.createElement('div'); name.className = 'text-[10px] font-bold mb-1 ' + (message.playerId === playerId ? 'text-purple-300 text-right' : 'text-emerald-300'); name.textContent = message.playerId === playerId ? 'You' : (message.name || 'Player');
-            const bubble = document.createElement('div'); bubble.className = 'rounded-2xl px-3 py-2 text-sm break-words ' + (message.playerId === playerId ? 'bg-purple-700 text-white' : 'bg-slate-800 text-slate-100'); bubble.textContent = message.text;
-            row.append(name, bubble); list.appendChild(row);
-        });
-        if(wasNearBottom) list.scrollTop = list.scrollHeight;
-    });
-}
-
-function closeChat(){ document.getElementById('chat-modal').classList.add('hidden'); }
-document.getElementById('chat-form').addEventListener('submit', async event => {
-    event.preventDefault(); const input = document.getElementById('chat-input'), text = input.value.trim(); if(!text) return;
-    try{ await roomRef.child('chatMessages').push({name: myName, playerId: playerId, text: text, sentAt: firebase.database.ServerValue.TIMESTAMP}); input.value = ''; input.focus(); }catch(e){}
-});
-
-function openTaggedModal(){ document.getElementById('tagged-modal').classList.remove('hidden'); }
-function closeTaggedModal(){ document.getElementById('tagged-modal').classList.add('hidden'); }
-function confirmTagged(tagged){ closeTaggedModal(); if(tagged) myPlayerRef.update({eliminated: true, eliminatedAt: Date.now()}).catch(()=>{}); }
-
-startChatNotifications();
-window.addEventListener('resize', () => map.invalidateSize());
-window.addEventListener('DOMContentLoaded', () => { enableCompass(); });
-
-let resultsShown = false;
-function showResultsScreen(huntersWon) {
-    if (resultsShown) return;
-    resultsShown = true;
-    const modal = document.getElementById('results-modal');
-    if (!modal) return;
-    
-    const isHunter = assignedRole === 'HUNTER';
-    const playerWon = (huntersWon && isHunter) || (!huntersWon && !isHunter);
-    
-    document.getElementById('res-header-title').textContent = huntersWon ? 'Hunters won.' : 'Shadows won.';
-    const badge = document.getElementById('res-badge');
-    badge.textContent = playerWon ? 'VICTORY' : 'DEFEAT';
-    badge.className = playerWon ? 'px-3 py-1 rounded-full font-mono text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-500/40' : 'px-3 py-1 rounded-full font-mono text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-400 border border-rose-500/40';
-    
-    document.getElementById('res-role-label').textContent = assignedRole;
-    document.getElementById('res-player-name').textContent = myName;
-    const elapsed = gameStartedAt ? Math.floor((Date.now() - gameStartedAt) / 1000) : 45;
-    document.getElementById('res-time').textContent = formatTime(elapsed);
-    document.getElementById('res-distance').textContent = Math.round(totalDistanceCovered) + ' m';
-    document.getElementById('res-subtitle').textContent = huntersWon ? 'All Shadows were tagged before time ran out.' : 'Shadows successfully survived the match!';
-    
-    const statusIconBg = document.getElementById('res-status-icon-bg'), statusText = document.getElementById('res-status-text'), statusSub = document.getElementById('res-status-sub');
-    const player = latestPlayers && latestPlayers[playerId], isEliminated = player && player.eliminated;
-    
-    if (isHunter) {
-        statusIconBg.className = 'w-12 h-12 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-black';
-        statusIconBg.textContent = '🛡️';
-        statusText.textContent = playerWon ? 'You won as Hunter' : 'Hunters lost';
-        statusText.className = playerWon ? 'font-bold text-emerald-400 text-sm' : 'font-bold text-rose-400 text-sm';
-        statusSub.textContent = 'Playing as Hunter';
-    } else {
-        if (isEliminated) {
-            statusIconBg.className = 'w-12 h-12 rounded-xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl font-black';
-            statusIconBg.textContent = '✕';
-            statusText.textContent = 'You were tagged';
-            statusText.className = 'font-bold text-rose-400 text-sm';
-            statusSub.textContent = 'Playing as Shadow';
-        } else {
-            statusIconBg.className = 'w-12 h-12 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-black';
-            statusIconBg.textContent = '✓';
-            statusText.textContent = 'You survived';
-            statusText.className = 'font-bold text-emerald-400 text-sm';
-            statusSub.textContent = 'Playing as Shadow';
-        }
-    }
-    
-    // Calculate player stats locally from localStorage / saved records or session
-    let matchesPlayed = parseInt(localStorage.getItem('shadowhunt_matches_played') || '0') + 1;
-    let matchesWon = parseInt(localStorage.getItem('shadowhunt_matches_won') || '0') + (playerWon ? 1 : 0);
-    let hunterTags = parseInt(localStorage.getItem('shadowhunt_hunter_tags') || '0') + (isHunter && playerWon ? 1 : 0);
-    let shadowEscapes = parseInt(localStorage.getItem('shadowhunt_shadow_escapes') || '0') + (!isHunter && !isEliminated ? 1 : 0);
-    
-    localStorage.setItem('shadowhunt_matches_played', matchesPlayed);
-    localStorage.setItem('shadowhunt_matches_won', matchesWon);
-    localStorage.setItem('shadowhunt_hunter_tags', hunterTags);
-    localStorage.setItem('shadowhunt_shadow_escapes', shadowEscapes);
-
-    let winRate = matchesPlayed > 0 ? Math.round((matchesWon / matchesPlayed) * 100) + '%' : '0%';
-    let careerScore = (matchesWon * 40) + (hunterTags * 30) + (shadowEscapes * 20) + 10;
-
-    document.getElementById('stat-matches-played').textContent = matchesPlayed;
-    document.getElementById('stat-matches-won').textContent = matchesWon;
-    document.getElementById('stat-win-rate').textContent = winRate;
-    document.getElementById('stat-hunter-tags').textContent = hunterTags;
-    document.getElementById('stat-shadow-escapes').textContent = shadowEscapes;
-    document.getElementById('stat-career-score').textContent = careerScore;
-    
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        try {
-            const resMap = L.map('res-map', {zoomControl: false, attributionControl: false}).setView([28.6139, 77.2090], 16);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19}).addTo(resMap);
-            if (lastKnownCoords){ resMap.setView([lastKnownCoords.lat, lastKnownCoords.lng], 16); L.marker([lastKnownCoords.lat, lastKnownCoords.lng]).addTo(resMap); }
-        } catch(e){}
-    }, 200);
-}
-</script>
+    </script>
 </body>
 </html>
