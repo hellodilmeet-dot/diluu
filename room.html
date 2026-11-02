@@ -64,7 +64,7 @@ body{font-family:'Inter',sans-serif;background:#05030a;color:#fff;transition:bac
 <label class="text-xs font-bold text-slate-400">Add Friend by Codename</label>
 <div class="flex gap-2">
 <input type="text" id="friend-name-input" placeholder="Enter Codename..." class="flex-1 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs text-white uppercase outline-none focus:border-purple-500">
-<button onclick="addFriendManual()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 rounded-xl text-xs cursor-pointer">Add</button>
+<button onclick="addFriend()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 rounded-xl text-xs cursor-pointer">Add</button>
 </div>
 </div>
 <div class="space-y-2 pt-2">
@@ -73,6 +73,21 @@ body{font-family:'Inter',sans-serif;background:#05030a;color:#fff;transition:bac
 <p class="text-xs text-slate-500 text-center py-4">No friends added yet.</p>
 </div>
 </div>
+</div>
+</div>
+
+<!-- INVITATION POPUP NOTIFICATION -->
+<div id="invite-popup" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm bg-slate-900 border border-purple-500/50 p-4 rounded-2xl shadow-2xl backdrop-blur-xl hidden flex items-center justify-between gap-3 animate-bounce">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-purple-950 border border-purple-500/40 rounded-xl flex items-center justify-center text-purple-300 font-bold">🔔</div>
+<div>
+<div class="text-xs font-black text-white" id="invite-sender-txt">Agent invited you!</div>
+<div class="text-[10px] text-slate-400">Join room code: <span id="invite-code-txt" class="font-mono font-bold text-purple-300"></span></div>
+</div>
+</div>
+<div class="flex gap-1.5">
+<button onclick="acceptInvite()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">Join</button>
+<button onclick="dismissInvite()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer">✕</button>
 </div>
 </div>
 
@@ -121,20 +136,11 @@ const urlParams=new URLSearchParams(window.location.search);
 let roomCode=urlParams.get('code');
 if(!roomCode){const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";roomCode="";for(let i=0;i<4;i++)roomCode+=chars.charAt(Math.floor(Math.random()*chars.length))}
 document.getElementById('room-code-txt').innerText=roomCode.toUpperCase();
-
 const myName=localStorage.getItem('shadowhunt_codename')||'AGENT_'+Math.floor(Math.random()*100);
-const myEmail=(localStorage.getItem('shadowhunt_email')||'hello.dilmeet@gmail.com').toLowerCase().replace(/[.#$\/\[\]]/g,'_');
 const playerIdKey=myName.replace(/[.#$\/\[\]]/g,'_');
-
-// Sync user profile in Firebase for auto-updating covenames
-db.ref('users/'+myEmail).set({
-codename: myName,
-lastSeen: Date.now()
-});
-
 const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus');
 const userInvitesRef=db.ref('invites/'+playerIdKey);
-let isUserHost=false,hostResolved=false,latestPlayersSnapshot=null,hasJoinedBattlefield=false;
+let isUserHost=false,hostResolved=false,latestPlayersSnapshot=null,countdownInterval=null,hasJoinedBattlefield=false;
 let currentSettings={radius:"400 m",hunters:1,headstart:"2 min",matchLength:"30 min",shrinkInterval:"2 min"};
 let assignedRole='SHADOW';
 let pendingInviteRoomCode = null;
@@ -146,20 +152,32 @@ else if(data.host===myName){role='HOST';isUserHost=true}else{isUserHost=false}
 hostResolved=true;if(latestPlayersSnapshot)renderPlayers(latestPlayersSnapshot);
 if(!isUserHost)document.getElementById('action-btn').innerHTML='<span>📋</span> RULES';
 const playerRef=playersRef.child(playerIdKey);
-playerRef.set({name:myName,email:myEmail,role:role,assignedRole:'PENDING',joinedAt:Date.now()});
+playerRef.set({name:myName,role:role,assignedRole:'PENDING',joinedAt:Date.now()});
 playerRef.onDisconnect().remove();
 });
 
+// Listen for incoming invites in real-time
 userInvitesRef.on('value', snapshot => {
 const inv = snapshot.val();
-if(inv && inv.roomCode) {
+if(inv && inv.roomCode && inv.roomCode !== roomCode) {
 pendingInviteRoomCode = inv.roomCode;
-if(confirm((inv.sender || 'A friend') + ' invited you to room ' + inv.roomCode.toUpperCase() + '! Do you want to join?')) {
+document.getElementById('invite-sender-txt').innerText = (inv.sender || 'A friend') + ' invited you!';
+document.getElementById('invite-code-txt').innerText = inv.roomCode.toUpperCase();
+document.getElementById('invite-popup').classList.remove('hidden');
+}
+});
+
+function acceptInvite(){
+if(pendingInviteRoomCode){
 userInvitesRef.remove();
 window.location.href = 'room.html?code=' + encodeURIComponent(pendingInviteRoomCode);
 }
 }
-});
+
+function dismissInvite(){
+document.getElementById('invite-popup').classList.add('hidden');
+userInvitesRef.remove();
+}
 
 function openFriendsModal(){
 document.getElementById('friends-modal').classList.remove('hidden');
@@ -171,86 +189,57 @@ document.getElementById('friends-modal').classList.add('hidden');
 
 function getFriends(){
 try{
-return JSON.parse(localStorage.getItem('shadowhunt_friends_emails') || '[]');
+return JSON.parse(localStorage.getItem('shadowhunt_friends') || '[]');
 }catch(e){return [];}
 }
 
-function addFriendManual(){
-const input = document.getElementById('friend-name-input');
-const val = input.value.trim();
-if(!val) return;
-db.ref('users').once('value', snap => {
-const users = snap.val() || {};
-let foundEmail = null;
-Object.keys(users).forEach(emailKey => {
-if(users[emailKey].codename.toUpperCase() === val.toUpperCase() || emailKey === val.toLowerCase().replace(/[.#$\/\[\]]/g,'_')){
-foundEmail = emailKey;
-}
-});
-if(foundEmail){
-if(foundEmail === myEmail){
-alert("You cannot add yourself as a friend!");
+function addFriend(){
+const nameInput = document.getElementById('friend-name-input');
+const fname = nameInput.value.trim().toUpperCase();
+if(!fname) return;
+if(fname === myName.toUpperCase()){
+alert("You cannot add yourself!");
 return;
 }
 let friends = getFriends();
-if(!friends.includes(foundEmail)){
-friends.push(foundEmail);
-localStorage.setItem('shadowhunt_friends_emails', JSON.stringify(friends));
-input.value = '';
+if(!friends.includes(fname)){
+friends.push(fname);
+localStorage.setItem('shadowhunt_friends', JSON.stringify(friends));
+nameInput.value = '';
 renderFriendsList();
 alert("Friend added successfully!");
 }else{
-alert("Friend already in your list.");
+alert("Friend already in list.");
 }
-}else{
-alert("Operative not found!");
-}
-});
 }
 
 function renderFriendsList(){
 const listEl = document.getElementById('friends-list');
-let friendEmails = getFriends();
-if(friendEmails.length === 0){
+let friends = getFriends();
+if(friends.length === 0){
 listEl.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No friends added yet.</p>';
 return;
 }
 listEl.innerHTML = '';
-friendEmails.forEach(emailKey => {
-db.ref('users/'+emailKey).once('value', uSnap => {
-const uData = uSnap.val();
-const currentCodename = uData ? uData.codename : emailKey;
+friends.forEach(f => {
 const div = document.createElement('div');
 div.className = "flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800";
-div.innerHTML = `<span class="text-xs font-bold text-white">${currentCodename}</span><button onclick="inviteFriend('${emailKey}')" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer">Invite</button>`;
+div.innerHTML = `<span class="text-xs font-bold text-white">${f}</span><button onclick="inviteFriend('${f}')" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer">Invite</button>`;
 listEl.appendChild(div);
-});
 });
 }
 
-function inviteFriend(emailKey){
-db.ref('invites/'+emailKey).set({
+function inviteFriend(friendName){
+const targetKey = friendName.replace(/[.#$\/\[\]]/g,'_');
+db.ref('invites/'+targetKey).set({
 sender: myName,
 roomCode: roomCode,
 timestamp: Date.now()
 }).then(()=>{
-alert("Invite sent successfully!");
+alert("Invite sent to " + friendName + "!");
 }).catch(()=>{
 alert("Failed to send invite.");
 });
-}
-
-function addFriendFromRoom(emailKey){
-if(!emailKey || emailKey === myEmail) return;
-let friends = getFriends();
-if(!friends.includes(emailKey)){
-friends.push(emailKey);
-localStorage.setItem('shadowhunt_friends_emails', JSON.stringify(friends));
-renderPlayers(latestPlayersSnapshot);
-alert("Friend added successfully!");
-}else{
-alert("Already in your friends list.");
-}
 }
 
 settingsRef.on('value',snapshot=>{
@@ -340,19 +329,10 @@ playersRef.on('value',snapshot=>{latestPlayersSnapshot=snapshot;if(!hostResolved
 function renderPlayers(snapshot){
 const players=snapshot.val(),listEl=document.getElementById('players-list');listEl.innerHTML='';
 let count=0;
-let friendsList = getFriends();
 if(players){Object.values(players).forEach(p=>{
 count++;const initials=p.name?p.name.substring(0,2).toUpperCase():'AG';const isHostBadge=p.role==='HOST';
-const pEmailKey = p.email || p.name.toLowerCase().replace(/[.#$\/\[\]]/g,'_');
-const isSelf = (pEmailKey === myEmail || p.name === myName);
-const isAlreadyFriend = friendsList.includes(pEmailKey) || isSelf;
-
 const item=document.createElement('div');item.className="flex justify-between items-center bg-slate-950/80 border border-slate-800/60 p-3 rounded-2xl relative";
-item.innerHTML=`<div class="flex items-center gap-3"><div class="relative w-10 h-10 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center font-mono font-bold text-xs text-slate-300">${initials}${isHostBadge?'<span class="absolute -top-1.5 -left-1.5 bg-amber-500 text-black text-[9px] w-4 h-4 rounded-full flex items-center font-black shadow">★</span>':''}</div><span class="font-bold text-sm text-white tracking-wide">${p.name}</span></div>
-<div class="flex items-center gap-2">
-${!isAlreadyFriend ? `<button onclick="addFriendFromRoom('${pEmailKey}')" class="bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-[10px] font-bold px-2.5 py-1 rounded-lg cursor-pointer transition">+ Add</button>` : ''}
-<span class="text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider ${isHostBadge?'bg-rose-500/10 text-rose-400 border border-rose-500/20':'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">${p.role}</span>
-</div>`;
+item.innerHTML=`<div class="flex items-center gap-3"><div class="relative w-10 h-10 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center font-mono font-bold text-xs text-slate-300">${initials}${isHostBadge?'<span class="absolute -top-1.5 -left-1.5 bg-amber-500 text-black text-[9px] w-4 h-4 rounded-full flex items-center font-black shadow">★</span>':''}</div><span class="font-bold text-sm text-white tracking-wide">${p.name}</span></div><span class="text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider ${isHostBadge?'bg-rose-500/10 text-rose-400 border border-rose-500/20':'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">${p.role}</span>`;
 listEl.appendChild(item);
 })}
 document.getElementById('joined-count').innerText=count+' joined';
