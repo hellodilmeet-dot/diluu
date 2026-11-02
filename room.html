@@ -10,16 +10,16 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; transition: background-color 0.5s ease; }
+        body { font-family: 'Inter', sans-serif; background-color: #05030a; color: #ffffff; transition: background-color 0.5s ease; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        #map { position: absolute; inset: 0; z-index: 0; }
+        #map { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; background: #05030a; }
         .leaflet-control-attribution, .leaflet-control-zoom { display: none !important; }
     </style>
 </head>
-<body id="page-body" class="min-h-screen flex flex-col justify-between p-4 selection:bg-purple-500 selection:text-white relative">
+<body id="page-body" class="relative h-screen w-screen flex flex-col justify-between p-4 selection:bg-purple-500 selection:text-white">
 
     <!-- ==================== VIEW 1: LOBBY VIEW ==================== -->
-    <div id="lobby-view" class="min-h-screen flex flex-col justify-between w-full max-w-md mx-auto relative z-10">
+    <div id="lobby-view" class="relative z-10 min-h-screen flex flex-col justify-between w-full max-w-md mx-auto">
         <!-- Top Header -->
         <header class="flex justify-between items-center py-3">
             <a href="lobby.html" class="text-slate-400 hover:text-white text-lg font-bold">‹</a>
@@ -61,7 +61,7 @@
                 <span>·</span>
                 <span id="sum-hunters">1 hunter</span>
                 <span>·</span>
-                <span id="sum-ping">180s pulse</span>
+                <span id="sum-headstart">2 min headstart</span>
                 <span>·</span>
                 <span id="sum-match">30m</span>
                 <span class="ml-auto text-slate-500">›</span>
@@ -88,7 +88,7 @@
 
 
     <!-- ==================== VIEW 2: ROLE REVEAL VIEW ==================== -->
-    <div id="role-view" class="min-h-screen flex flex-col justify-between w-full max-w-md mx-auto p-2 hidden relative z-10">
+    <div id="role-view" class="relative z-10 min-h-screen flex flex-col justify-between w-full max-w-md mx-auto p-2 hidden">
         <div class="my-auto"></div>
         <div id="role-container" class="text-center space-y-4 w-full my-auto">
             <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -110,7 +110,7 @@
 
         <!-- TOP HEADER & HEADSTART STATUS -->
         <header class="relative z-30 w-full max-w-md mx-auto space-y-2 pointer-events-none">
-            <div class="bg-slate-950/80 border border-slate-800/80 p-3.5 rounded-2xl backdrop-blur-md shadow-2xl space-y-1.5 pointer-events-auto">
+            <div class="bg-slate-950/85 border border-slate-800/80 p-3.5 rounded-2xl backdrop-blur-md shadow-2xl space-y-1.5 pointer-events-auto">
                 <div class="text-[10px] font-extrabold tracking-widest text-amber-400 uppercase">Headstart Countdown</div>
                 <div class="flex justify-between items-center">
                     <span id="match-timer" class="text-3xl font-mono font-black text-amber-300 tracking-wider">30:00</span>
@@ -120,11 +120,11 @@
                 </div>
             </div>
 
-            <div class="bg-slate-950/80 border border-slate-800/80 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-xl flex justify-between items-center pointer-events-auto">
+            <div class="bg-slate-950/85 border border-slate-800/80 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-xl flex justify-between items-center pointer-events-auto">
                 <div id="game-role-badge" class="px-3 py-1 rounded-lg font-mono text-xs font-black uppercase tracking-wider bg-purple-950 text-purple-300 border border-purple-500/40">
                     SHADOW
                 </div>
-                <span id="runners-count-txt" class="font-mono text-xs font-bold text-slate-300 uppercase tracking-wide">RUNNERS: 1 of 1</span>
+                <span class="font-mono text-xs font-bold text-slate-300 uppercase tracking-wide">SHADOWHUNT LIVE</span>
             </div>
 
             <div id="game-status-bar" class="bg-slate-950/90 border border-amber-500/40 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-xl flex items-center justify-between pointer-events-auto">
@@ -132,7 +132,7 @@
                     <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
                     <span id="game-status-title" class="font-mono text-xs font-black text-amber-300 tracking-wider uppercase">RUNNERS SCATTER</span>
                 </div>
-                <span id="headstart-timer" class="font-mono text-xs font-bold text-amber-200">03:00</span>
+                <span id="headstart-timer" class="font-mono text-xs font-bold text-amber-200">02:00</span>
             </div>
         </header>
 
@@ -143,8 +143,8 @@
         </div>
 
         <!-- BOTTOM ACTION CONTAINER -->
-        <footer class="relative z-30 w-full max-w-md mx-auto pb-2 pointer-events-none">
-            <div id="tagged-btn-container" class="pointer-events-auto hidden">
+        <footer class="relative z-30 w-full max-w-md mx-auto pb-2 pointer-events-auto">
+            <div id="tagged-btn-container" class="hidden">
                 <button onclick="openTaggedModal()" class="w-full bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white font-black py-4 rounded-2xl shadow-xl shadow-rose-950 transition text-sm tracking-widest uppercase flex items-center justify-center gap-2 cursor-pointer border border-rose-400/40">
                     🏳️ I GOT TAGGED
                 </button>
@@ -179,6 +179,15 @@
                     </select>
                 </div>
                 <div>
+                    <label class="text-xs font-bold text-slate-400">Headstart Duration</label>
+                    <select id="edit-headstart" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
+                        <option value="1 min">1 min</option>
+                        <option value="2 min">2 min</option>
+                        <option value="3 min">3 min</option>
+                        <option value="5 min">5 min</option>
+                    </select>
+                </div>
+                <div>
                     <label class="text-xs font-bold text-slate-400">Match Length</label>
                     <select id="edit-match" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold">
                         <option value="15 min">15 min</option>
@@ -202,6 +211,7 @@
             <div class="space-y-3 font-medium text-sm text-slate-300">
                 <div class="flex justify-between py-2 border-b border-slate-900"><span>Play area radius</span><span id="rule-radius" class="font-mono text-purple-400 font-bold">400 m</span></div>
                 <div class="flex justify-between py-2 border-b border-slate-900"><span>Hunters</span><span id="rule-hunters" class="font-mono text-purple-400 font-bold">1</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-900"><span>Headstart</span><span id="rule-headstart" class="font-mono text-purple-400 font-bold">2 min</span></div>
                 <div class="flex justify-between py-2"><span>Match length</span><span id="rule-match" class="font-mono text-purple-400 font-bold">30 min</span></div>
             </div>
             <button onclick="closeRules()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3.5 rounded-2xl tracking-widest uppercase text-xs cursor-pointer">✓ Done</button>
@@ -263,6 +273,35 @@
         let assignedRole = 'SHADOW';
         let matchTimerInterval = null;
         let headstartTimerInterval = null;
+        let currentSettings = { radius: "400 m", hunters: 1, headstart: "2 min", matchLength: "30 min" };
+
+        // Initialize Map immediately on page load so tiles load properly without delay
+        window.addEventListener('DOMContentLoaded', () => {
+            map = L.map('map', { zoomControl: false }).setView([28.6139, 77.2090], 16);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    if (!myMarker) {
+                        myMarker = L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: "#10b981",
+                            color: "#fff",
+                            weight: 2,
+                            fillOpacity: 1
+                        }).addTo(map);
+                        map.setView([lat, lng], 17);
+                    } else {
+                        myMarker.setLatLng([lat, lng]);
+                    }
+                }, err => console.error(err), { enableHighAccuracy: true });
+            }
+        });
 
         roomRef.once('value', snapshot => {
             const data = snapshot.val();
@@ -272,7 +311,7 @@
                 roomRef.update({ host: myName });
                 role = 'HOST';
                 isUserHost = true;
-                settingsRef.set({ radius: "400 m", hunters: 1, matchLength: "30 min" });
+                settingsRef.set(currentSettings);
             } else if (data.host === myName) {
                 role = 'HOST';
                 isUserHost = true;
@@ -289,21 +328,26 @@
             playerRef.onDisconnect().remove();
         });
 
-        // Live Real-Time Settings synchronization
+        // Real-Time Settings synchronization
         settingsRef.on('value', snapshot => {
             const s = snapshot.val();
             if (s) {
+                currentSettings = s;
                 document.getElementById('sum-radius').innerText = s.radius;
                 document.getElementById('sum-hunters').innerText = s.hunters + ' hunter';
+                document.getElementById('sum-headstart').innerText = s.headstart + ' headstart';
                 document.getElementById('sum-match').innerText = s.matchLength;
+
                 document.getElementById('rule-radius').innerText = s.radius;
                 document.getElementById('rule-hunters').innerText = s.hunters;
+                document.getElementById('rule-headstart').innerText = s.headstart;
                 document.getElementById('rule-match').innerText = s.matchLength;
 
                 document.getElementById('zone-txt').innerText = `ZONE ${s.radius}`;
 
                 if(document.getElementById('edit-radius')) document.getElementById('edit-radius').value = s.radius;
                 if(document.getElementById('edit-hunters')) document.getElementById('edit-hunters').value = s.hunters;
+                if(document.getElementById('edit-headstart')) document.getElementById('edit-headstart').value = s.headstart;
                 if(document.getElementById('edit-match')) document.getElementById('edit-match').value = s.matchLength;
             }
         });
@@ -323,6 +367,7 @@
             settingsRef.update({
                 radius: document.getElementById('edit-radius').value,
                 hunters: parseInt(document.getElementById('edit-hunters').value),
+                headstart: document.getElementById('edit-headstart').value,
                 matchLength: document.getElementById('edit-match').value
             }).then(() => {
                 alert("Settings updated successfully!");
@@ -332,7 +377,7 @@
 
         function triggerStartMission() {
             settingsRef.once('value', sSnap => {
-                const settings = sSnap.val() || { hunters: 1 };
+                const settings = sSnap.val() || currentSettings;
                 const targetHuntersCount = Number(settings.hunters) || 1;
 
                 playersRef.once('value', pSnap => {
@@ -432,14 +477,28 @@
                 document.getElementById('game-status-title').innerText = "RUNNERS SCATTER";
             }
 
-            initMap();
-            startLiveGameTimers();
+            if (map) {
+                map.invalidateSize();
+                if (myMarker) {
+                    map.setView(myMarker.getLatLng(), 17);
+                }
+            }
+
+            // Fetch latest settings from Firebase and start dynamic timers based on host selection
+            settingsRef.once('value', snapshot => {
+                const s = snapshot.val() || currentSettings;
+                startLiveGameTimers(s);
+            });
         }
 
-        // Live Timers for Battlefield Gameplay (Match Timer & Headstart Timer)
-        function startLiveGameTimers() {
-            // Match Timer (Default 30 Minutes countdown)
-            let matchSeconds = 30 * 60;
+        // Dynamic Timers Based Directly on Firebase Settings
+        function startLiveGameTimers(settings) {
+            if (matchTimerInterval) clearInterval(matchTimerInterval);
+            if (headstartTimerInterval) clearInterval(headstartTimerInterval);
+
+            // Parse Match Length (e.g., "30 min" -> seconds)
+            let matchMins = parseInt(settings.matchLength) || 30;
+            let matchSeconds = matchMins * 60;
             matchTimerInterval = setInterval(() => {
                 if (matchSeconds > 0) matchSeconds--;
                 let mins = Math.floor(matchSeconds / 60);
@@ -447,8 +506,14 @@
                 document.getElementById('match-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }, 1000);
 
-            // Headstart Timer (3 Minutes countdown, then unlock hunters & show Tagged button)
-            let headstartSeconds = 3 * 60;
+            // Parse Headstart Duration (e.g., "2 min" -> seconds)
+            let headstartMins = parseInt(settings.headstart) || 2;
+            let headstartSeconds = headstartMins * 60;
+            
+            let initMins = Math.floor(headstartSeconds / 60);
+            let initSecs = headstartSeconds % 60;
+            document.getElementById('headstart-timer').innerText = `${initMins.toString().padStart(2, '0')}:${initSecs.toString().padStart(2, '0')}`;
+
             headstartTimerInterval = setInterval(() => {
                 if (headstartSeconds > 0) {
                     headstartSeconds--;
@@ -457,44 +522,15 @@
                     document.getElementById('headstart-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 } else {
                     clearInterval(headstartTimerInterval);
-                    // Headstart over: Update status text
                     if (assignedRole === 'HUNTER') {
                         document.getElementById('game-status-title').innerText = "GO FIND THEM";
                     } else {
                         document.getElementById('game-status-title').innerText = "HUNT ACTIVE";
-                        document.getElementById('tagged-btn-container').classList.remove('hidden'); // Show I Got Tagged button
+                        document.getElementById('tagged-btn-container').classList.remove('hidden');
                     }
                     document.getElementById('headstart-timer').innerText = "ACTIVE";
                 }
             }, 1000);
-        }
-
-        function initMap() {
-            if (map) return;
-            map = L.map('map', { zoomControl: false }).setView([28.6139, 77.2090], 16);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19
-            }).addTo(map);
-
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    if (!myMarker) {
-                        myMarker = L.circleMarker([lat, lng], {
-                            radius: 8,
-                            fillColor: assignedRole === 'HUNTER' ? "#e11d48" : "#10b981",
-                            color: "#fff",
-                            weight: 2,
-                            fillOpacity: 1
-                        }).addTo(map);
-                        map.setView([lat, lng], 17);
-                    } else {
-                        myMarker.setLatLng([lat, lng]);
-                    }
-                }, err => console.error(err), { enableHighAccuracy: true });
-            }
         }
 
         function centerMap() {
