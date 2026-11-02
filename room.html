@@ -56,25 +56,11 @@ body{font-family:'Inter',sans-serif;background:#05030a;color:#fff;transition:bac
 <div class="space-y-4 text-sm">
 <div><label class="text-xs font-bold text-slate-400">Play Area Radius</label><select id="edit-radius" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold"><option value="200 m">200 m</option><option value="400 m">400 m</option><option value="500 m">500 m</option><option value="1000 m">1000 m</option></select></div>
 <div><label class="text-xs font-bold text-slate-400">Hunters Count</label><select id="edit-hunters" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold"><option value="1">1 Hunter</option><option value="2">2 Hunters</option><option value="3">3 Hunters</option></select></div>
-<div><label class="text-xs font-bold text-slate-400">Role Assignment Mode</label><select id="edit-role-mode" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold"><option value="random">Random Allocation</option><option value="manual">Manual Selection</option></select></div>
 <div><label class="text-xs font-bold text-slate-400">Headstart Duration</label><select id="edit-headstart" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold"><option value="1 min">1 min</option><option value="2 min">2 min</option><option value="3 min">3 min</option><option value="5 min">5 min</option></select></div>
 <div><label class="text-xs font-bold text-slate-400">Zone Shrink Interval</label><select id="edit-shrink" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold"><option value="2 min">Every 2 min</option><option value="3 min">Every 3 min</option><option value="5 min">Every 5 min</option><option value="7 min">Every 7 min</option></select></div>
 <div><label class="text-xs font-bold text-slate-400">Match Length</label><select id="edit-match" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-white font-mono font-bold"><option value="15 min">15 min</option><option value="30 min">30 min</option><option value="45 min">45 min</option><option value="60 min">60 min</option></select></div>
 </div>
 <button onclick="saveHostSettings()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3.5 rounded-2xl tracking-widest uppercase text-xs cursor-pointer shadow-lg">Save Settings</button>
-</div>
-</div>
-
-<!-- Manual Role Selector Checkbox Modal for Host -->
-<div id="manual-role-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-<div class="bg-slate-950 border border-slate-800 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-<div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
-<h3 class="font-black text-white text-base tracking-wide">Select Hunter(s)</h3>
-<button onclick="closeManualModal()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
-</div>
-<p id="manual-modal-instruction" class="text-xs text-slate-400">Check the box for players you want to assign as Hunter:</p>
-<div id="manual-players-list" class="space-y-2 max-h-[250px] overflow-y-auto"></div>
-<button onclick="confirmManualRolesAndStart()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3.5 rounded-2xl tracking-widest uppercase text-xs cursor-pointer shadow-lg">Start Mission</button>
 </div>
 </div>
 
@@ -113,7 +99,7 @@ const myName=localStorage.getItem('shadowhunt_codename')||'AGENT_'+Math.floor(Ma
 const playerIdKey=myName.replace(/[.#$\/\[\]]/g,'_');
 const roomRef=db.ref('rooms/'+roomCode),playersRef=roomRef.child('players'),settingsRef=roomRef.child('settings'),gameStatusRef=roomRef.child('gameStatus');
 let isUserHost=false,hostResolved=false,latestPlayersSnapshot=null,countdownInterval=null,hasJoinedBattlefield=false;
-let currentSettings={radius:"400 m",hunters:1,roleMode:"random",headstart:"2 min",matchLength:"30 min",shrinkInterval:"2 min"};
+let currentSettings={radius:"400 m",hunters:1,headstart:"2 min",matchLength:"30 min",shrinkInterval:"2 min"};
 let assignedRole='SHADOW';
 
 roomRef.once('value',snapshot=>{
@@ -141,7 +127,6 @@ document.getElementById('rule-match').innerText=s.matchLength;
 document.getElementById('rule-shrink').innerText=s.shrinkInterval||'2 min';
 if(document.getElementById('edit-radius'))document.getElementById('edit-radius').value=s.radius;
 if(document.getElementById('edit-hunters'))document.getElementById('edit-hunters').value=s.hunters;
-if(document.getElementById('edit-role-mode'))document.getElementById('edit-role-mode').value=s.roleMode||'random';
 if(document.getElementById('edit-headstart'))document.getElementById('edit-headstart').value=s.headstart;
 if(document.getElementById('edit-match'))document.getElementById('edit-match').value=s.matchLength;
 if(document.getElementById('edit-shrink'))document.getElementById('edit-shrink').value=s.shrinkInterval||'2 min';
@@ -150,32 +135,18 @@ if(document.getElementById('edit-shrink'))document.getElementById('edit-shrink')
 function handleActionButton(){if(isUserHost)document.getElementById('host-settings-modal').classList.remove('hidden');else document.getElementById('rules-modal').classList.remove('hidden')}
 function closeHostSettings(){document.getElementById('host-settings-modal').classList.add('hidden')}
 function closeRules(){document.getElementById('rules-modal').classList.add('hidden')}
-function closeManualModal(){document.getElementById('manual-role-modal').classList.add('hidden')}
-
 function saveHostSettings(){
 settingsRef.update({
 radius:document.getElementById('edit-radius').value,
 hunters:parseInt(document.getElementById('edit-hunters').value),
-roleMode:document.getElementById('edit-role-mode').value,
 headstart:document.getElementById('edit-headstart').value,
 matchLength:document.getElementById('edit-match').value,
 shrinkInterval:document.getElementById('edit-shrink').value
 }).then(()=>{alert("Settings updated successfully!");closeHostSettings()});
 }
-
 function triggerStartMission(){
 settingsRef.once('value',sSnap=>{
 const settings=sSnap.val()||currentSettings;
-const mode=settings.roleMode||'random';
-if(mode==='manual'){
-openManualRoleSelector(settings.hunters);
-}else{
-executeRandomRoleStart(settings);
-}
-});
-}
-
-function executeRandomRoleStart(settings){
 const targetHuntersCount=Number(settings.hunters)||1;
 playersRef.once('value',pSnap=>{
 const playersObj=pSnap.val();if(!playersObj)return;
@@ -183,67 +154,6 @@ let playerIds=Object.keys(playersObj);playerIds.sort(()=>Math.random()-.5);
 let updates={};
 playerIds.forEach((id,index)=>{updates[id+'/assignedRole']=(index<targetHuntersCount)?'HUNTER':'SHADOW'});
 playersRef.update(updates).then(()=>{
-roomRef.child('zoneState').remove().then(()=>gameStatusRef.set({started:true,startedAt:Date.now()}));
-});
-});
-}
-
-function openManualRoleSelector(maxHunters){
-playersRef.once('value',pSnap=>{
-const playersObj=pSnap.val();if(!playersObj)return;
-const listContainer=document.getElementById('manual-players-list');
-listContainer.innerHTML='';
-document.getElementById('manual-modal-instruction').innerText = `Select exactly ${maxHunters} player(s) to be Hunter(s):`;
-
-Object.keys(playersObj).forEach(id=>{
-const p=playersObj[id];
-const div=document.createElement('div');
-div.className="flex justify-between items-center bg-slate-900 p-3.5 rounded-2xl border border-slate-800";
-div.innerHTML=`<span class="text-sm font-bold text-white">${p.name}</span><label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-rose-400 bg-rose-950/40 border border-rose-500/30 px-3 py-1.5 rounded-xl"><input type="checkbox" class="manual-hunter-checkbox w-4 h-4 accent-rose-600 rounded" value="${id}"> Make Hunter</label>`;
-listContainer.appendChild(div);
-});
-
-// Limit selection check
-const checkboxes = document.querySelectorAll('.manual-hunter-checkbox');
-checkboxes.forEach(chk => {
-chk.addEventListener('change', () => {
-const checkedCount = document.querySelectorAll('.manual-hunter-checkbox:checked').length;
-if(checkedCount > maxHunters){
-chk.checked = false;
-alert(`You can only select up to ${maxHunters} hunter(s) based on room settings.`);
-}
-});
-});
-
-document.getElementById('host-settings-modal').classList.add('hidden');
-document.getElementById('manual-role-modal').classList.remove('hidden');
-});
-}
-
-function confirmManualRolesAndStart(){
-settingsRef.once('value',sSnap=>{
-const settings=sSnap.val()||currentSettings;
-const maxHunters = Number(settings.hunters) || 1;
-const checkedBoxes = document.querySelectorAll('.manual-hunter-checkbox:checked');
-
-if(checkedBoxes.length !== maxHunters){
-alert(`Please select exactly ${maxHunters} hunter(s) before starting.`);
-return;
-}
-
-playersRef.once('value',pSnap=>{
-const playersObj=pSnap.val();if(!playersObj)return;
-let selectedHunterIds = Array.from(checkedBoxes).map(b => b.value);
-let updates={};
-Object.keys(playersObj).forEach(id=>{
-if(selectedHunterIds.includes(id)){
-updates[id+'/assignedRole']='HUNTER';
-}else{
-updates[id+'/assignedRole']='SHADOW';
-}
-});
-playersRef.update(updates).then(()=>{
-closeManualModal();
 roomRef.child('zoneState').remove().then(()=>gameStatusRef.set({started:true,startedAt:Date.now()}));
 });
 });
