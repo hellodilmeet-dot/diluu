@@ -365,9 +365,7 @@ playersRef.on('value', snapshot => {
         }
     });
     
-    // Check win/loss conditions:
-    // 1. If all shadows are eliminated -> Hunters win (true)
-    // 2. If hunter is missing / left (no active hunter in room) after game start -> Shadows win (false)
+    // Check win/loss conditions instantly in real-time:
     if(playersSnapshotInitialized) {
         if(totalShadows > 0 && eliminatedShadows === totalShadows) {
             showResultsScreen(true); // Hunters win
