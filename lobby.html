@@ -34,6 +34,22 @@
     <!-- Main Lobby Hub -->
     <main class="max-w-md w-full mx-auto space-y-4 my-auto w-full py-6">
         
+        <!-- INVITATION POPUP CONTAINER (Placed in the requested red area zone) -->
+        <div id="lobby-invite-box" class="hidden bg-slate-900/95 border border-purple-500/60 p-4 rounded-3xl shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3 animate-pulse">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-purple-950 border border-purple-500/40 rounded-2xl flex items-center justify-center text-purple-300 font-bold">🔔</div>
+                <div>
+                    <div class="text-xs font-black text-white" id="invite-sender-txt">Agent invited you!</div>
+                    <div class="text-[10px] text-slate-400">Room Code: <span id="invite-code-txt" class="font-mono font-bold text-purple-300"></span></div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="acceptLobbyInvite()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer shadow-lg">Accept</button>
+                <button onclick="dismissLobbyInvite()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer">✕</button>
+            </div>
+        </div>
+
+        <img src="https://media4.giphy.com/media/H5C8CevNMbpBqNqFjl/200w.gif" alt="Girl in a jacket" width="500" height="600">
         <!-- Host Game Card -->
         <a href="host.html" class="block bg-gradient-to-r from-purple-950/60 to-slate-900 border border-purple-500/30 p-6 rounded-3xl hover:border-purple-500/60 transition shadow-xl group">
             <div class="flex justify-between items-center">
@@ -69,30 +85,26 @@
         BHUNDHUNT Tactical · Secure Protocol
     </footer>
 
-    <!-- OPERATIVE FILE / SETTINGS MODAL (Matching your screenshot) -->
+    <!-- OPERATIVE FILE / SETTINGS MODAL -->
     <div id="settings-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
         <div class="bg-slate-950 border border-slate-800/80 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-6 shadow-2xl">
             
-            <!-- Modal Header -->
             <div class="flex justify-between items-center border-b border-slate-900 pb-4">
                 <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Operative File</span>
                 <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">×</button>
             </div>
 
-            <!-- Profile Overview -->
             <div class="text-center space-y-1">
                 <h2 id="modal-username" class="text-xl font-black text-white tracking-wider uppercase">AGENT</h2>
                 <p id="modal-email" class="text-xs text-slate-400 font-mono">hello.dilmeet@gmail.com</p>
                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest pt-1">Operative Since Oct 2026</p>
             </div>
 
-            <!-- Career Score Card -->
             <div class="bg-slate-900/80 border border-slate-800/60 p-5 rounded-2xl text-center space-y-1">
                 <div class="text-3xl font-mono font-black text-purple-400 tracking-wider">130</div>
                 <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Career Score</div>
             </div>
 
-            <!-- Lifetime Stats Grid (2x3) -->
             <div class="space-y-2">
                 <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-1">Lifetime Stats</div>
                 <div class="grid grid-cols-2 gap-3 text-left">
@@ -123,39 +135,24 @@
                 </div>
             </div>
 
-            <!-- Account Management Section -->
             <div class="space-y-2 pt-2">
                 <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-1">Account</div>
                 <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800/60 text-sm font-bold">
-                    
-                    <!-- Change Codename Option -->
                     <button onclick="changeCodename()" class="w-full flex justify-between items-center p-4 hover:bg-slate-800/50 transition cursor-pointer">
-                        <div class="flex items-center gap-3 text-slate-200">
-                            <span>✏️</span> Change Codename
-                        </div>
+                        <div class="flex items-center gap-3 text-slate-200"><span>✏️</span> Change Codename</div>
                         <span class="text-slate-500">›</span>
                     </button>
-
-                    <!-- Safety & Legal -->
                     <div class="flex justify-between items-center p-4 text-slate-200">
-                        <div class="flex items-center gap-3">
-                            <span>🛡️</span> Safety & Legal
-                        </div>
+                        <div class="flex items-center gap-3"><span>🛡️</span> Safety & Legal</div>
                         <span class="text-slate-500">›</span>
                     </div>
-
-                    <!-- Sign Out / Logout Option -->
                     <button onclick="signOut()" class="w-full flex justify-between items-center p-4 hover:bg-rose-950/20 text-rose-400 transition cursor-pointer">
-                        <div class="flex items-center gap-3">
-                            <span>🚪</span> Sign Out
-                        </div>
+                        <div class="flex items-center gap-3"><span>🚪</span> Sign Out</div>
                         <span class="text-rose-500">›</span>
                     </button>
-
                 </div>
             </div>
 
-            <!-- Footer brand inside modal -->
             <div class="text-center pt-2 pb-1 text-[9px] font-extrabold uppercase tracking-widest text-slate-600">
                 BHUNDHUNT Tactical · Honour Protocol
             </div>
@@ -163,12 +160,45 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script>
-        // Load Saved User Profile
+        const firebaseConfig={apiKey:"AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",authDomain:"diluu-d8441.firebaseapp.com",projectId:"diluu-d8441",storageBucket:"diluu-d8441.firebasestorage.app",messagingSenderId:"28253953439",appId:"1:28253953439:web:f1f4266ca95c980ee831aa",measurementId:"G-E1ELEEX02N"};
+        firebase.initializeApp(firebaseConfig);
+        const db=firebase.database();
+
         const currentName = localStorage.getItem('shadowhunt_codename') || 'AGENT';
+        const playerIdKey = currentName.replace(/[.#$\/\[\]]/g,'_');
         document.getElementById('display-name').innerText = currentName;
         document.getElementById('modal-username').innerText = currentName;
         document.getElementById('user-initials').innerText = currentName.substring(0, 2).toUpperCase();
+
+        const userInvitesRef = db.ref('invites/' + playerIdKey);
+        let pendingInviteRoomCode = null;
+
+        // Listen for real-time room invites in lobby
+        userInvitesRef.on('value', snapshot => {
+            const inv = snapshot.val();
+            if(inv && inv.roomCode) {
+                pendingInviteRoomCode = inv.roomCode;
+                document.getElementById('invite-sender-txt').innerText = (inv.sender || 'A friend') + ' invited you!';
+                document.getElementById('invite-code-txt').innerText = inv.roomCode.toUpperCase();
+                document.getElementById('lobby-invite-box').classList.remove('hidden');
+            }
+        });
+
+        function acceptLobbyInvite(){
+            if(pendingInviteRoomCode){
+                userInvitesRef.remove();
+                window.location.href = 'room.html?code=' + encodeURIComponent(pendingInviteRoomCode);
+            }
+        }
+
+        function dismissLobbyInvite(){
+            document.getElementById('lobby-invite-box').classList.add('hidden');
+            userInvitesRef.remove();
+        }
 
         function openSettingsModal() {
             document.getElementById('settings-modal').classList.remove('hidden');
@@ -178,25 +208,20 @@
             document.getElementById('settings-modal').classList.add('hidden');
         }
 
-        // Change Codename Functionality
         function changeCodename() {
             const newName = prompt("Enter new operative codename:", currentName);
             if (newName && newName.trim() !== "") {
                 const formatted = newName.trim().toUpperCase();
                 localStorage.setItem('shadowhunt_codename', formatted);
-                document.getElementById('display-name').innerText = formatted;
-                document.getElementById('modal-username').innerText = formatted;
-                document.getElementById('user-initials').innerText = formatted.substring(0, 2).toUpperCase();
-                alert("Codename updated successfully to: " + formatted);
+                window.location.reload();
             }
         }
 
-        // Sign Out / Logout Functionality
         function signOut() {
             if (confirm("Are you sure you want to sign out?")) {
                 localStorage.removeItem('shadowhunt_codename');
                 sessionStorage.clear();
-                window.location.href = 'auth.html'; // Redirect to login page
+                window.location.href = 'auth.html';
             }
         }
     </script>
