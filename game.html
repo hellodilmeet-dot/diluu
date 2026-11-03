@@ -357,7 +357,7 @@ playersRef.on('value', snapshot => {
             eliminatedNow.add(id);
             if(playersSnapshotInitialized && !knownEliminations.has(id)){
                 const notice = document.getElementById('elimination-notice');
-                notice.textContent = (p.name || 'A player') + ' was eliminated';
+                notice.textContent = (p.name || 'A player') + ' — Bhund Margai Iski';
                 notice.classList.remove('hidden');
                 if(noticeTimeout) clearTimeout(noticeTimeout);
                 noticeTimeout = setTimeout(() => notice.classList.add('hidden'), 5000);
