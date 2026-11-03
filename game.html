@@ -387,12 +387,13 @@ playersRef.on('value', snapshot => {
         }
     });
     
-    // Improved Win/Loss Logic: Wait until snapshot is fully initialized and game has run for at least 3 seconds
-    if(playersSnapshotInitialized && gameStartedAt && (Date.now() - gameStartedAt > 3000)) {
+    // Safety buffer check: Do not evaluate win/loss conditions during the first 6 seconds of match startup
+    const matchRunningDuration = gameStartedAt ? (Date.now() - gameStartedAt) : 0;
+    if(playersSnapshotInitialized && matchRunningDuration > 6000) {
         if(totalShadows > 0 && eliminatedShadows === totalShadows) {
             showResultsScreen(true); // Hunters win
-        } else if(hunterCount === 0) {
-            showResultsScreen(false); // Shadows win only if truly no hunter exists
+        } else if(hunterCount === 0 && matchRunningDuration > 10000) {
+            showResultsScreen(false); // Shadows win only if no hunter exists after 10s grace period
         }
     }
 
