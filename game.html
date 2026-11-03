@@ -363,7 +363,7 @@ function updateRemotePlayers(players){
 
 playersRef.on('value', snapshot => {
     const players = snapshot.val() || {}, eliminatedNow = new Set();
-    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0, hunterActive = false;
+    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0, hunterCount = 0;
     
     Object.entries(players).forEach(([id, p]) => {
         if(!p) return;
@@ -373,7 +373,7 @@ playersRef.on('value', snapshot => {
             else eliminatedShadows++;
         }
         if(p.assignedRole === 'HUNTER'){
-            hunterActive = true;
+            hunterCount++;
         }
         if(p.eliminated){
             eliminatedNow.add(id);
@@ -387,11 +387,12 @@ playersRef.on('value', snapshot => {
         }
     });
     
-    if(playersSnapshotInitialized) {
+    // Improved Win/Loss Logic: Wait until snapshot is fully initialized and game has run for at least 3 seconds
+    if(playersSnapshotInitialized && gameStartedAt && (Date.now() - gameStartedAt > 3000)) {
         if(totalShadows > 0 && eliminatedShadows === totalShadows) {
-            showResultsScreen(true);
-        } else if(!hunterActive && gameStartedAt) {
-            showResultsScreen(false);
+            showResultsScreen(true); // Hunters win
+        } else if(hunterCount === 0) {
+            showResultsScreen(false); // Shadows win only if truly no hunter exists
         }
     }
 
@@ -522,16 +523,13 @@ async function toggleVoiceChat() {
 }
 
 function setupVoiceSignaling(){
-    // Announce presence
     voiceRef.child(playerId).set({ online: true });
     voiceRef.child(playerId).onDisconnect().remove();
 
-    // Listen for peer join/signals
     voiceRef.on('child_added', snapshot => {
         const peerId = snapshot.key;
         if(peerId === playerId || !voiceActive) return;
 
-        // Initiate call if alphabetical order or host logic to avoid double calls
         if(playerId > peerId){
             createPeerConnection(peerId, true);
         }
@@ -547,7 +545,6 @@ function setupVoiceSignaling(){
         if(audioEl) audioEl.remove();
     });
 
-    // Listen to signaling messages
     roomRef.child('rtcSignals/'+playerId).on('child_added', async snap => {
         const data = snap.val();
         if(!data || !voiceActive) return;
@@ -594,7 +591,6 @@ function createPeerConnection(peerId, isInitiator){
             audioEl.id = 'remote-audio-'+peerId;
             audioEl.autoplay = true;
             audioEl.setAttribute('playsinline', '');
-            // Force loudspeaker output
             if(typeof audioEl.setSinkId === 'function') {
                 audioEl.setSinkId('default').catch(()=>{});
             }
