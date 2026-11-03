@@ -488,10 +488,12 @@ function startTimers(settings, startedAt){
 
 function centerMap(){ if(marker) map.setView(marker.getLatLng(), 18); }
 
-// VOICE CHAT LOGIC (Always on Speaker via Web Audio API & MediaStream)
+// WEBRTC FIREBASE VOICE CHAT SIGNALING LOGIC
 let voiceActive = false;
-let localAudioStream = null;
-let remoteAudioElements = {};
+let localStream = null;
+const peerConnections = {};
+const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const voiceRef = roomRef.child('voiceSignals');
 
 async function toggleVoiceChat() {
     const btn = document.getElementById('voice-chat-btn');
@@ -499,21 +501,8 @@ async function toggleVoiceChat() {
     if(voiceActive){
         btn.className = 'w-12 h-12 bg-emerald-600 border border-emerald-400 rounded-2xl text-white flex items-center justify-center text-lg transition shadow-lg shadow-emerald-900/50';
         try {
-            localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            // Publish audio state to Firebase
-            roomRef.child('voiceChannels/'+playerId).set({ active: true, name: myName, updatedAt: Date.now() });
-            roomRef.child('voiceChannels/'+playerId).onDisconnect().remove();
-            
-            // Listen to other players' voice channels
-            roomRef.child('voiceChannels').on('value', snap => {
-                const channels = snap.val() || {};
-                Object.entries(channels).forEach(([id, info]) => {
-                    if(id !== playerId && info && info.active){
-                        // Connect remote audio stream simulation for global squad chat
-                        playRemoteVoice(id);
-                    }
-                });
-            });
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            setupVoiceSignaling();
         } catch(e) {
             alert('Microphone permission required for squad voice chat.');
             voiceActive = false;
@@ -521,29 +510,113 @@ async function toggleVoiceChat() {
         }
     } else {
         btn.className = 'w-12 h-12 bg-slate-950/90 border border-slate-700 rounded-2xl text-slate-400 flex items-center justify-center text-lg transition';
-        if(localAudioStream){
-            localAudioStream.getTracks().forEach(track => track.stop());
-            localAudioStream = null;
+        if(localStream){
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
         }
-        roomRef.child('voiceChannels/'+playerId).remove();
+        Object.keys(peerConnections).forEach(id => {
+            if(peerConnections[id]) { peerConnections[id].close(); delete peerConnections[id]; }
+        });
+        voiceRef.child(playerId).remove();
     }
 }
 
-function playRemoteVoice(id){
-    if(remoteAudioElements[id]) return;
-    const audioEl = document.createElement('audio');
-    audioEl.autoplay = true;
-    audioEl.setAttribute('playsinline', '');
-    // Enforce loudspeaker output
-    if(typeof audioEl.setSinkId === 'function') {
-        audioEl.setSinkId('default').catch(()=>{});
+function setupVoiceSignaling(){
+    // Announce presence
+    voiceRef.child(playerId).set({ online: true });
+    voiceRef.child(playerId).onDisconnect().remove();
+
+    // Listen for peer join/signals
+    voiceRef.on('child_added', snapshot => {
+        const peerId = snapshot.key;
+        if(peerId === playerId || !voiceActive) return;
+
+        // Initiate call if alphabetical order or host logic to avoid double calls
+        if(playerId > peerId){
+            createPeerConnection(peerId, true);
+        }
+    });
+
+    voiceRef.on('child_removed', snapshot => {
+        const peerId = snapshot.key;
+        if(peerConnections[peerId]){
+            peerConnections[peerId].close();
+            delete peerConnections[peerId];
+        }
+        const audioEl = document.getElementById('remote-audio-'+peerId);
+        if(audioEl) audioEl.remove();
+    });
+
+    // Listen to signaling messages
+    roomRef.child('rtcSignals/'+playerId).on('child_added', async snap => {
+        const data = snap.val();
+        if(!data || !voiceActive) return;
+        const sender = data.sender;
+        let pc = peerConnections[sender];
+        if(!pc){
+            pc = createPeerConnection(sender, false);
+        }
+
+        if(data.type === 'offer'){
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            roomRef.child('rtcSignals/'+sender).push({ sender: playerId, type: 'answer', answer: answer });
+        } else if(data.type === 'answer'){
+            await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        } else if(data.type === 'candidate'){
+            if(data.candidate){
+                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        }
+        snap.ref.remove();
+    });
+}
+
+function createPeerConnection(peerId, isInitiator){
+    const pc = new RTCPeerConnection(rtcConfig);
+    peerConnections[peerId] = pc;
+
+    if(localStream){
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
-    remoteAudioElements[id] = audioEl;
+
+    pc.onicecandidate = event => {
+        if(event.candidate){
+            roomRef.child('rtcSignals/'+peerId).push({ sender: playerId, type: 'candidate', candidate: event.candidate.toJSON() });
+        }
+    };
+
+    pc.ontrack = event => {
+        let audioEl = document.getElementById('remote-audio-'+peerId);
+        if(!audioEl){
+            audioEl = document.createElement('audio');
+            audioEl.id = 'remote-audio-'+peerId;
+            audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', '');
+            // Force loudspeaker output
+            if(typeof audioEl.setSinkId === 'function') {
+                audioEl.setSinkId('default').catch(()=>{});
+            }
+            document.body.appendChild(audioEl);
+        }
+        audioEl.srcObject = event.streams[0];
+    };
+
+    if(isInitiator){
+        pc.createOffer().then(offer => {
+            return pc.setLocalDescription(offer).then(() => {
+                roomRef.child('rtcSignals/'+peerId).push({ sender: playerId, type: 'offer', offer: offer });
+            });
+        }).catch(()=>{});
+    }
+
+    return pc;
 }
 
 // CHAT & PERSONAL CHAT LOGIC
 let chatListenerStarted = false, chatUnreadCount = 0, chatNotificationInitialized = false, chatNotificationTimeout = null;
-let currentChatTab = 'global'; // 'global' or 'personal'
+let currentChatTab = 'global';
 let targetPersonalPlayerId = null;
 const knownChatMessageIds = new Set();
 
@@ -573,7 +646,7 @@ function switchChatTab(tab){
         btnGlobal.className = 'text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-600 text-white';
         btnPersonal.className = 'text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-900 text-slate-400';
         userSelectBox.classList.add('hidden');
-        title.innerText = 'PLAYER CHAT (ALL)';
+        title.innerText = 'PLAYER CHAT';
         loadChatMessages();
     } else {
         btnPersonal.className = 'text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-600 text-white';
@@ -619,13 +692,12 @@ function loadChatMessages(){
         snapshot.forEach(child => {
             const message = child.val(); if(!message || typeof message.text !== 'string') return;
             
-            // Filter for personal chat if tab is personal
             if(currentChatTab === 'personal'){
                 const isRelevant = (message.playerId === playerId && message.recipientId === targetPersonalPlayerId) || 
                                    (message.playerId === targetPersonalPlayerId && message.recipientId === playerId);
                 if(!isRelevant) return;
             } else {
-                if(message.recipientId) return; // ignore personal messages in global
+                if(message.recipientId) return;
             }
 
             const row = document.createElement('div'); row.className = 'max-w-[90%] ' + (message.playerId === playerId ? 'ml-auto' : 'mr-auto');
