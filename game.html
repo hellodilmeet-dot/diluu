@@ -363,7 +363,7 @@ function updateRemotePlayers(players){
 
 playersRef.on('value', snapshot => {
     const players = snapshot.val() || {}, eliminatedNow = new Set();
-    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0, hunterCount = 0;
+    let survivorCount = 0, totalShadows = 0, eliminatedShadows = 0;
     
     Object.entries(players).forEach(([id, p]) => {
         if(!p) return;
@@ -371,9 +371,6 @@ playersRef.on('value', snapshot => {
             totalShadows++;
             if(!p.eliminated) survivorCount++;
             else eliminatedShadows++;
-        }
-        if(p.assignedRole === 'HUNTER'){
-            hunterCount++;
         }
         if(p.eliminated){
             eliminatedNow.add(id);
@@ -387,13 +384,11 @@ playersRef.on('value', snapshot => {
         }
     });
     
-    // Safety buffer check: Do not evaluate win/loss conditions during the first 6 seconds of match startup
+    // Clean Win Condition: Game only ends when all shadows are eliminated or match timer runs out
     const matchRunningDuration = gameStartedAt ? (Date.now() - gameStartedAt) : 0;
-    if(playersSnapshotInitialized && matchRunningDuration > 6000) {
+    if(playersSnapshotInitialized && matchRunningDuration > 5000) {
         if(totalShadows > 0 && eliminatedShadows === totalShadows) {
-            showResultsScreen(true); // Hunters win
-        } else if(hunterCount === 0 && matchRunningDuration > 10000) {
-            showResultsScreen(false); // Shadows win only if no hunter exists after 10s grace period
+            showResultsScreen(true); // Hunters win because all shadows are tagged
         }
     }
 
