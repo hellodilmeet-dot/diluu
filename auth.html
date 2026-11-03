@@ -23,19 +23,27 @@
             </div>
 
             <div id="error-box" class="hidden mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+            <div id="success-box" class="hidden mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"></div>
 
-            <form onsubmit="handleAuth(event)" class="space-y-4">
+            <form onsubmit="handleAuth(event)" class="space-y-4" id="auth-form">
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500 text-lg">@</span>
                     <input type="email" id="email" required placeholder="Mail Daal Gandu" class="w-full pl-11 pr-4 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 text-sm">
                 </div>
-                <div class="relative">
+                <div class="relative" id="password-container">
                     <input type="password" id="password" required placeholder="Pass Daal Bsdk" class="w-full pl-4 pr-12 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 text-sm">
                 </div>
+                
+                <!-- Forgot Password Link -->
+                <div id="forgot-link-container" class="text-right">
+                    <button type="button" onclick="showForgotPassword()" class="text-xs text-purple-400 hover:text-purple-300 transition cursor-pointer">Forgot Password?</button>
+                </div>
+
                 <button type="submit" id="submit-btn" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-extrabold py-3.5 rounded-xl transition text-sm tracking-wider cursor-pointer">
                     → SIGN IN
                 </button>
             </form>
+
             <div class="mt-4 text-center">
                 <a href="index.html" class="text-xs text-slate-500 hover:text-slate-300 transition">Back to Home</a>
             </div>
@@ -48,56 +56,77 @@
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-    const savedName = localStorage.getItem('shadowhunt_codename');
-    if (savedName) {
-        // Agar naam pehle se save hai, toh login page skip karke seedha lobby mein bhej do
-        window.location.href = 'lobby.html';
-    }
-});
+            const savedName = localStorage.getItem('shadowhunt_codename');
+            if (savedName) {
+                window.location.href = 'lobby.html';
+            }
+        });
 
-// Jab user apna codename enter karke submit kare
-function handleLogin() {
-    const nameInput = document.getElementById('codename-input').value.trim();
-    if (nameInput) {
-        // LocalStorage mein save kar lo taaki baar-baar login na karna pade
-        localStorage.setItem('shadowhunt_codename', nameInput);
-        window.location.href = 'lobby.html';
-    }
-}
-          const firebaseConfig = {
-  apiKey: "AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",
-  authDomain: "diluu-d8441.firebaseapp.com",
-  projectId: "diluu-d8441",
-  storageBucket: "diluu-d8441.firebasestorage.app",
-  messagingSenderId: "28253953439",
-  appId: "1:28253953439:web:f1f4266ca95c980ee831aa",
-  measurementId: "G-E1ELEEX02N"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",
+            authDomain: "diluu-d8441.firebaseapp.com",
+            projectId: "diluu-d8441",
+            storageBucket: "diluu-d8441.firebasestorage.app",
+            messagingSenderId: "28253953439",
+            appId: "1:28253953439:web:f1f4266ca95c980ee831aa",
+            measurementId: "G-E1ELEEX02N"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         let isSignUp = false;
+        let isForgotPassword = false;
 
         function toggleAuthMode() {
             isSignUp = !isSignUp;
-            document.getElementById('form-title').innerText = isSignUp ? "Create account." : "Welcome back[cite: 4].";
-            document.getElementById('toggle-btn').innerText = isSignUp ? "Sign in[cite: 4]" : "Sign up[cite: 4]";
-            document.getElementById('submit-btn').innerText = isSignUp ? "→ SIGN UP" : "→ SIGN IN[cite: 4]";
+            isForgotPassword = false;
+            document.getElementById('form-title').innerText = isSignUp ? "Create account." : "Welcome back[span_0](start_span)[span_0](end_span).";
+            document.getElementById('toggle-btn').innerText = isSignUp ? "Sign in[span_1](start_span)[span_1](end_span)" : "Sign up[span_2](start_span)[span_2](end_span)";
+            document.getElementById('submit-btn').innerText = isSignUp ? "→ SIGN UP" : "→ SIGN IN[span_3](start_span)[span_3](end_span)";
+            document.getElementById('password-container').style.display = 'block';
+            document.getElementById('forgot-link-container').style.display = 'block';
+            document.getElementById('error-box').classList.add('hidden');
+            document.getElementById('success-box').classList.add('hidden');
+        }
+
+        function showForgotPassword() {
+            isForgotPassword = true;
+            document.getElementById('form-title').innerText = "Reset Password";
+            document.getElementById('toggle-btn').innerText = "Back to Sign in";
+            document.getElementById('submit-btn').innerText = "→ SEND RESET LINK";
+            document.getElementById('password-container').style.display = 'none';
+            document.getElementById('forgot-link-container').style.display = 'none';
+            document.getElementById('error-box').classList.add('hidden');
+            document.getElementById('success-box').classList.add('hidden');
         }
 
         function handleAuth(event) {
             event.preventDefault();
             const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
             const errBox = document.getElementById('error-box');
+            const successBox = document.getElementById('success-box');
             errBox.classList.add('hidden');
+            successBox.classList.add('hidden');
 
+            if (isForgotPassword) {
+                auth.sendPasswordResetEmail(email)
+                    .then(() => {
+                        successBox.innerText = "Password reset link sent to your email! Check your inbox.";
+                        successBox.classList.remove('hidden');
+                    })
+                    .catch((error) => {
+                        errBox.innerText = error.message;
+                        errBox.classList.remove('hidden');
+                    });
+                return;
+            }
+
+            const password = document.getElementById('password').value.trim();
             const authAction = isSignUp ? 
                 auth.createUserWithEmailAndPassword(email, password) : 
                 auth.signInWithEmailAndPassword(email, password);
 
             authAction.then(() => {
-                // Login successful hone ke baad direct onboarding page par bhej dega
                 window.location.href = "onboarding.html";
             }).catch((error) => {
                 errBox.innerText = error.message;
