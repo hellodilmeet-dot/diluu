@@ -163,6 +163,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script>
+        // Prevent excessive history stacking on page load
+if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
+}
         const firebaseConfig={apiKey:"AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",authDomain:"diluu-d8441.firebaseapp.com",projectId:"diluu-d8441",storageBucket:"diluu-d8441.firebasestorage.app",messagingSenderId:"28253953439",appId:"1:28253953439:web:f1f4266ca95c980ee831aa",measurementId:"G-E1ELEEX02N"};
         firebase.initializeApp(firebaseConfig);
         const db=firebase.database();
