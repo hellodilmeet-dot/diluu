@@ -35,7 +35,7 @@
     <main class="max-w-md w-full mx-auto space-y-4 my-auto w-full py-6">
         <img src="https://github.com/hellodilmeet-dot/diluu/blob/main/IMG_20260712_092201.jpg?raw=true" alt="Girl in a jacket" width="500" height="600">
         
-        <!-- INVITATION POPUP CONTAINER (Placed in the requested red area zone) -->
+        <!-- INVITATION POPUP CONTAINER -->
         <div id="lobby-invite-box" class="hidden bg-slate-900/95 border border-purple-500/60 p-4 rounded-3xl shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3 animate-pulse">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-purple-950 border border-purple-500/40 rounded-2xl flex items-center justify-center text-purple-300 font-bold">🔔</div>
@@ -49,8 +49,9 @@
                 <button onclick="dismissLobbyInvite()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer">✕</button>
             </div>
         </div>
+
         <!-- Host Game Card -->
-        <a href="host.html" class="block bg-gradient-to-r from-purple-950/60 to-slate-900 border border-purple-500/30 p-6 rounded-3xl hover:border-purple-500/60 transition shadow-xl group">
+        <button onclick="goToHost()" class="w-full text-left block bg-gradient-to-r from-purple-950/60 to-slate-900 border border-purple-500/30 p-6 rounded-3xl hover:border-purple-500/60 transition shadow-xl group cursor-pointer">
             <div class="flex justify-between items-center">
                 <div class="space-y-1">
                     <span class="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">Command</span>
@@ -61,10 +62,10 @@
                     Host
                 </div>
             </div>
-        </a>
+        </button>
 
         <!-- Join Game Card -->
-        <a href="join.html" class="block bg-slate-900/90 border border-slate-800/80 p-6 rounded-3xl hover:border-slate-700 transition shadow-xl group">
+        <button onclick="goToJoin()" class="w-full text-left block bg-slate-900/90 border border-slate-800/80 p-6 rounded-3xl hover:border-slate-700 transition shadow-xl group cursor-pointer">
             <div class="flex justify-between items-center">
                 <div class="space-y-1">
                     <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Infiltration</span>
@@ -75,7 +76,7 @@
                     Join
                 </div>
             </div>
-        </a>
+        </button>
 
     </main>
 
@@ -163,10 +164,22 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script>
-        // Prevent excessive history stacking on page load
-if (window.history.replaceState) {
-    window.history.replaceState(null, null, window.location.href);
-}
+        // Controlled Back Button Handler for Lobby
+        if (window.history && window.history.pushState) {
+            window.history.pushState(null, null, window.location.href);
+            window.addEventListener('popstate', function () {
+                window.history.pushState(null, null, window.location.href);
+            });
+        }
+
+        function goToHost() {
+            window.location.replace('host.html');
+        }
+
+        function goToJoin() {
+            window.location.replace('join.html');
+        }
+
         const firebaseConfig={apiKey:"AIzaSyAtvpK18T3twmdG3FCf9fLbuwXepletouk",authDomain:"diluu-d8441.firebaseapp.com",projectId:"diluu-d8441",storageBucket:"diluu-d8441.firebasestorage.app",messagingSenderId:"28253953439",appId:"1:28253953439:web:f1f4266ca95c980ee831aa",measurementId:"G-E1ELEEX02N"};
         firebase.initializeApp(firebaseConfig);
         const db=firebase.database();
@@ -194,7 +207,7 @@ if (window.history.replaceState) {
         function acceptLobbyInvite(){
             if(pendingInviteRoomCode){
                 userInvitesRef.remove();
-                window.location.href = 'room.html?code=' + encodeURIComponent(pendingInviteRoomCode);
+                window.location.replace('room.html?code=' + encodeURIComponent(pendingInviteRoomCode));
             }
         }
 
@@ -224,7 +237,7 @@ if (window.history.replaceState) {
             if (confirm("Are you sure you want to sign out?")) {
                 localStorage.removeItem('shadowhunt_codename');
                 sessionStorage.clear();
-                window.location.href = 'auth.html';
+                window.location.replace('auth.html');
             }
         }
     </script>
